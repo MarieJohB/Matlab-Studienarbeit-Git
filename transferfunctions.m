@@ -1,4 +1,4 @@
-function [G, K] = transferfunctions(T, S, L)
+function [T, S, L] = transferfunctions(G, K)
 
 % function to calculate different transferfunctions 
 % inputs: controlled system G(s) and controller K(s)
