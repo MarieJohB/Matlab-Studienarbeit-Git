@@ -7,5 +7,10 @@ function [bw, cf] = get_bode(A)
 
 bw = bandwidth(A);
 
+% bode plot
+figure;
+bode(A);
+title('Bode Diagramm');
+
 
 end
