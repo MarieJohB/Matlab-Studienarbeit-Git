@@ -41,18 +41,26 @@ function plot_system_response_with_parameters(L, target_value, d1, d2)
     plot(t_out, y_total, 'b', 'DisplayName', 'System Response');
     hold on;
     plot(t_out, target, 'r--', 'DisplayName', 'Target Value');
-    plot([0 t_out(end)], [a a], 'k--', 'DisplayName', 'Stationary Value (a)');
-    plot([0 t_out(end)], [a + b a + b], 'g--', 'DisplayName', 'Overshoot (b)');
-    plot([0 t_out(end)], [a - c a - c], 'm--', 'DisplayName', 'Decay Ratio (c)');
-    plot([tr tr], ylim, 'c--', 'DisplayName', 'Rise Time (tr)');
-    plot([ts ts], ylim, 'y--', 'DisplayName', 'Settling Time (ts)');
+    yline(a, 'k--', 'DisplayName', 'Stationary Value (a)');
+    yline(a + b, 'g--', 'DisplayName', 'Overshoot (b)');
+    yline(a - c, 'm--', 'DisplayName', 'Decay Ratio (c)');
+    xline(tr, 'c--', 'DisplayName', 'Rise Time (tr)');
+    xline(ts, 'y--', 'DisplayName', 'Settling Time (ts)');
     title('System Response with Key Parameters');
     xlabel('Time (seconds)');
     ylabel('Response');
     legend;
+
+    % Annotate the plot with calculated values
+    annotation('textbox', [0.15, 0.7, 0.2, 0.1], 'String', ['Stationary value (a): ', num2str(a)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
+    annotation('textbox', [0.15, 0.65, 0.2, 0.1], 'String', ['Overshoot (b): ', num2str(b)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
+    annotation('textbox', [0.15, 0.6, 0.2, 0.1], 'String', ['Decay ratio (c): ', num2str(c)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
+    annotation('textbox', [0.15, 0.55, 0.2, 0.1], 'String', ['Rise time (tr): ', num2str(tr)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
+    annotation('textbox', [0.15, 0.5, 0.2, 0.1], 'String', ['Settling time (ts): ', num2str(ts)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
+
     grid on;
 
-    % Display key parameters
+    % Display key parameters in the command window
     disp(['Stationary value (a): ', num2str(a)]);
     disp(['Overshoot (b): ', num2str(b)]);
     disp(['Decay ratio (c): ', num2str(c)]);
