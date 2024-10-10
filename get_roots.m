@@ -1,6 +1,6 @@
 function [results_roots] = get_roots(A)
 % input:  tranfer function
-% output: roots_G: roots of the function 
+% output: results_roots: roots of the function 
 syms s; % set 's' as sybolic variable
 
 % calculation of roots (Nullstellen) of function

@@ -7,9 +7,14 @@ if ~isa(L, 'tf')
 end
   
 % Calculate margins
+% Gm = gain margin 
+% Pm = phase margin
+% wcg = gain crossover frequency
+% wcp = phase crossover frequency
 [Gm, Pm, Wcg, Wcp] = margin(L);
     
 margin(L);
+
 
 % Output the calculated values
 fprintf('Gain Margin: %.2f dB\n', 20*log10(Gm));
