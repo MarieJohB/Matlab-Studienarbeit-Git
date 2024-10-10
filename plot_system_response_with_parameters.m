@@ -3,8 +3,26 @@ function plot_system_response_with_parameters(L, target_value, d1, d2)
     disp('Transfer Function:');
     disp(L);
 
+    % Get the timeframe for the plot from the user
+    prompt = {'Enter the start time (seconds):', 'Enter the end time (seconds):'};
+    dlgtitle = 'Timeframe Input';
+    dims = [1 50];
+    answer = inputdlg(prompt, dlgtitle, dims);
+    
+    % Validate input
+    try
+        start_time = str2double(answer{1});
+        end_time = str2double(answer{2});
+        if isnan(start_time) || isnan(end_time) || start_time < 0 || end_time <= start_time
+            error('Invalid input. Please enter valid time values.');
+        end
+    catch
+        uiwait(msgbox('Invalid input. Please enter the values correctly.', 'Error', 'error'));
+        return;
+    end
+
     % Define the time vector
-    t = linspace(0, 10, 1000); % 0 to 10 seconds with 1000 points
+    t = linspace(start_time, end_time, 1000); % Start time to end time with 1000 points
 
     % Calculate the target value
     if isa(target_value, 'function_handle')
@@ -32,7 +50,7 @@ function plot_system_response_with_parameters(L, target_value, d1, d2)
     % Calculate key parameters
     a = y_total(end); % Stationary value
     b = max(y_total) - a; % Overshoot
-    c = b - min(y_total); % Decay ratio
+    c = a - min(y_total); % Decay ratio
     tr = t(find(y_total >= a * 0.9, 1)); % Rise time (90% of a)
     ts = t(find(abs(y_total - a) <= 0.02 * a, 1, 'last')); % Settling time (2% band)
 
@@ -40,30 +58,23 @@ function plot_system_response_with_parameters(L, target_value, d1, d2)
     figure;
     plot(t_out, y_total, 'b', 'DisplayName', 'System Response');
     hold on;
-    plot(t_out, target, 'r--', 'DisplayName', 'Target Value');
-    yline(a, 'k--', 'DisplayName', 'Stationary Value (a)');
-    yline(a + b, 'g--', 'DisplayName', 'Overshoot (b)');
-    yline(a - c, 'm--', 'DisplayName', 'Decay Ratio (c)');
-    xline(tr, 'c--', 'DisplayName', 'Rise Time (tr)');
-    xline(ts, 'y--', 'DisplayName', 'Settling Time (ts)');
+    plot(t_out, target, 'r--', 'DisplayName', ['Target Value: ', num2str(target_value), ' units']);
+    yline(a, 'k--', 'DisplayName', ['Stationary Value (a): ', num2str(a), ' units']);
+    yline(a + b, 'g--', 'DisplayName', ['Overshoot (b): ', num2str(b), ' units']);
+    yline(a - c, 'm--', 'DisplayName', ['Decay Ratio (c): ', num2str(c), ' units']);
+    xline(tr, 'c--', 'DisplayName', ['Rise Time (tr): ', num2str(tr), ' seconds']);
+    xline(ts, 'y--', 'DisplayName', ['Settling Time (ts): ', num2str(ts), ' seconds']);
     title('System Response with Key Parameters');
     xlabel('Time (seconds)');
-    ylabel('Response');
-    legend;
-
-    % Annotate the plot with calculated values
-    annotation('textbox', [0.15, 0.7, 0.2, 0.1], 'String', ['Stationary value (a): ', num2str(a)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
-    annotation('textbox', [0.15, 0.65, 0.2, 0.1], 'String', ['Overshoot (b): ', num2str(b)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
-    annotation('textbox', [0.15, 0.6, 0.2, 0.1], 'String', ['Decay ratio (c): ', num2str(c)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
-    annotation('textbox', [0.15, 0.55, 0.2, 0.1], 'String', ['Rise time (tr): ', num2str(tr)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
-    annotation('textbox', [0.15, 0.5, 0.2, 0.1], 'String', ['Settling time (ts): ', num2str(ts)], 'EdgeColor', 'none', 'FontSize', 12, 'Color', 'black');
-
+    ylabel('Response (units)');
+    legend('Location', 'best');
     grid on;
 
     % Display key parameters in the command window
-    disp(['Stationary value (a): ', num2str(a)]);
-    disp(['Overshoot (b): ', num2str(b)]);
-    disp(['Decay ratio (c): ', num2str(c)]);
-    disp(['Rise time (tr): ', num2str(tr)]);
-    disp(['Settling time (ts): ', num2str(ts)]);
+    disp(['Stationary value (a): ', num2str(a), ' units']);
+    disp(['Overshoot (b): ', num2str(b), ' units']);
+    disp(['Decay ratio (c): ', num2str(c), ' units']);
+    disp(['Rise time (tr): ', num2str(tr), ' seconds']);
+    disp(['Settling time (ts): ', num2str(ts), ' seconds']);
 end
+
