@@ -11,7 +11,8 @@ function target_value = get_target_value()
             
             % Validate input
             try
-                target_value = str2double(answer{1});
+                target_value_str = strrep(answer{1}, ',', '.'); % checking for "," and replacing with "."
+                target_value = str2double(target_value_str); % converting string to double 
                 if isnan(target_value)
                     error('Invalid input. Please enter a numeric value.');
                 end
