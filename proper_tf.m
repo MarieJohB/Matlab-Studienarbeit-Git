@@ -3,9 +3,14 @@ function is_proper = proper_tf(G)
 
 syms s; % set 's' as symbolic variable
 
-% Initialize output variables
-is_proper = false;
+[Num,Den] = tfdata(G,'v');
 
-if limit(G, s, inf) < inf
-  is_proper = true;
+G_sys = poly2sym(Num,s)/poly2sym(Den,s); 
+
+if limit(G_sys, s, inf) < inf
+    disp('Transferfunction is proper');
+    is_proper = true;
+else
+    disp('Transferfunction is not proper');
+    is_proper = false;
 end
