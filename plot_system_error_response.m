@@ -38,7 +38,7 @@ function plot_system_error_response(L, target_value, d1, d2)
     title('System Error Response');
     xlabel('Time (seconds)');
     ylabel('Error');
-    legend;
+    legend('System Error'); % Ensure legend displays correctly
     grid on;
 
     % Display the closed-loop transfer function
