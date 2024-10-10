@@ -55,42 +55,62 @@ function K = get_user_controller()
     try
         switch controller_type
             case 1 % P Controller
-                Kp = str2double(answer{1});
+                Kp_str = strrep(answer{1}, ',', '.'); % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
                 K = pid(Kp, 0, 0);
             case 2 % PI Controller
-                Kp = str2double(answer{1});
-                Ki = str2double(answer{2});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                Ki_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                Ki = str2double(Ki_str);
                 K = pid(Kp, Ki, 0);
             case 3 % PD Controller
-                Kp = str2double(answer{1});
-                Kd = str2double(answer{2});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                Kd_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                Kd = str2double(Kd_str);
                 K = pid(Kp, 0, Kd);
             case 4 % PID Controller
-                Kp = str2double(answer{1});
-                Ki = str2double(answer{2});
-                Kd = str2double(answer{3});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                Ki_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                Ki = str2double(Ki_str);
+                Kd_str = strrep(answer{3}, ',', '.');  % checking for "," and replacing with "."
+                Kd = str2double(Kd_str);
                 K = pid(Kp, Ki, Kd);
             case 5 % PT1 Controller
-                Kp = str2double(answer{1});
-                t_controller = str2double(answer{2});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                t_controller_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                t_controller = str2double(t_controller_str);
                 K = tf([Kp], [t_controller 1]);
             case 6 % PIT1 Controller
-                Kp = str2double(answer{1});
-                Ki = str2double(answer{2});
-                t_controller = str2double(answer{3});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                Ki_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                Ki = str2double(Ki_str);
+                t_controller_str = strrep(answer{3}, ',', '.');  % checking for "," and replacing with "."
+                t_controller = str2double(t_controller_str);
                 K = tf([Kp*Ki Kp], [t_controller 1 0]);
             case 7 % I2 Controller
-                Ki = str2double(answer{1});
+                Ki_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Ki = str2double(Ki_str);
                 K = tf([Ki], [1 0 0]);
             case 8 % PIDT1 Controller
-                Kp = str2double(answer{1});
-                Ki = str2double(answer{2});
-                Kd = str2double(answer{3});
-                t_controller = str2double(answer{4});
+                Kp_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                Kp = str2double(Kp_str);
+                Ki_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                Ki = str2double(Ki_str);
+                Kd_str = strrep(answer{3}, ',', '.');  % checking for "," and replacing with "."
+                Kd = str2double(Kd_str);
+                t_controller_str = strrep(answer{4}, ',', '.');  % checking for "," and replacing with "."
+                t_controller = str2double(t_controller_str);
                 K = tf([Kd Kp Ki], [t_controller 1 0]);
             case 9 % Custom Controller
-                num = str2num(answer{1}); %#ok<ST2NM>
-                den = str2num(answer{2}); %#ok<ST2NM>
+                num_str = strrep(answer{1}, ',', '.');  % checking for "," and replacing with "."
+                num = str2num(num_str); %#ok<ST2NM>
+                den_str = strrep(answer{2}, ',', '.');  % checking for "," and replacing with "."
+                den = str2num(den_str); %#ok<ST2NM>
                 K = tf(num, den);
         end
     catch
