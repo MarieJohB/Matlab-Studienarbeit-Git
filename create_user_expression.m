@@ -19,12 +19,12 @@ function create_user_expression()
     
 
     % 1. choose how many terms the expression should contain
-    uilabel(scrollPanel, 'Position', [20 350 200 22], 'Text', 'Select number of terms:');
+    uilabel(scrollPanel, 'Position', [20 430 200 22], 'Text', 'Select number of terms:');
     % input for user to enter a value
-    inputField = uieditfield(scrollPanel, 'text', 'Position', [150 350 200 22]);
+    inputField = uieditfield(scrollPanel, 'text', 'Position', [150 430 200 22]);
 
     % Button to get the answer
-    submitButton = uibutton(scrollPanel, 'Position', [200 300 100 22], 'Text', 'Submit', 'ButtonPushedFcn', @(btn, event) process_input());
+    submitButton = uibutton(scrollPanel, 'Position', [200 400 100 22], 'Text', 'Submit', 'ButtonPushedFcn', @(btn, event) process_input());
     
     function process_input()
 
@@ -42,8 +42,8 @@ function create_user_expression()
             create_user_expression(); % calling the function again 
         else 
         
-            if  mod(number, 1) ~= 0 || number < 1 || number > 10 
-                uiwait(msgbox('Invalid input. Please enter a valid integer between 1 and 10.', 'Error','error'));
+            if  mod(number, 1) ~= 0 || number < 1 || number > 5 
+                uiwait(msgbox('Invalid input. Please enter a valid integer between 1 and 5.', 'Error','error'));
                 inputField.Value = '';
                 create_user_expression(); % calling the function again 
             else
@@ -52,16 +52,16 @@ function create_user_expression()
             delete(submitButton);
            
             % Create input fields and dropdowns to create terms
-            yPos = 300;
+            yPos = 390;
             termInputs = struct();
                 for i = 1:number
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Coefficient ', num2str(i), ':']);
                     termInputs(i).coef = uieditfield(scrollPanel, 'numeric', 'Position', [150 yPos 100 22]);
 
-                    yPos = yPos - 40;
+                    yPos = yPos - 30;
 
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
-                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't^2', 'sin(t)', 'cos(t)', 'exp(t)'}, 'Position', [150 yPos 100 22]);
+                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't^2', 't^3', 't^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1/t'}, 'Position', [150 yPos 100 22]);
 
                     yPos = yPos - 40;
                 end
