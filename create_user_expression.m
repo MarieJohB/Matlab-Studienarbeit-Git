@@ -39,7 +39,7 @@ function create_user_expression()
          % if not user has to try again
             uiwait(msgbox('Invalid input. Please enter a valid number.', 'Error','error'));
             inputField.Value = '';
-            create_user_expression(); % calling the function again 
+            create_user_expression(); % calling the function again to get valid input
         else 
         
             if  mod(number, 1) ~= 0 || number < 1 || number > 5 
@@ -52,14 +52,17 @@ function create_user_expression()
             delete(submitButton);
            
             % Create input fields and dropdowns to create terms
-            yPos = 390;
-            termInputs = struct();
-                for i = 1:number
+            yPos = 390; % starting position
+            termInputs = struct(); % terms consist of coefficient and time depending term
+                for i = 1:number % creating as many terms as user entered priviously
+
+                    % 1) input the coefficient
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Coefficient ', num2str(i), ':']);
                     termInputs(i).coef = uieditfield(scrollPanel, 'numeric', 'Position', [150 yPos 100 22]);
 
-                    yPos = yPos - 30;
-
+                    yPos = yPos - 30; % place new field underneath
+                    
+                    % create dropdown so user can select the term
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
                     termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't.^2', 't.^3', 't.^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1/t'}, 'Position', [150 yPos 100 22]);
 
@@ -68,28 +71,31 @@ function create_user_expression()
 
             % Button to create the expression
             % Positioning at the bottom of field
-
-            uibutton(scrollPanel, 'Position', [20 yPos 150 22], 'Text', 'Create Expression', 'ButtonPushedFcn', @(btn, event) create_expression(termInputs));
+            uibutton(scrollPanel, 'Position', [20 yPos 150 22], 'Text', 'Create Expression', 'ButtonPushedFcn', @(btn, event) create_expression(termInputs)); 
         
             end
         end
         
     end
 
+    % new function to create the time dependent expression
     function create_expression(termInputs)
 
+        % creating an array of strings 
+        % array has 1 row
+        % array has columns: number of elements in termInputs
+        expressionParts = strings(1, length(termInputs)); 
 
-        expressionParts = strings(1, length(termInputs));
-
-        for i = 1:length(termInputs)
-            coef = termInputs(i).coef.Value;
-            term = termInputs(i).term.Value;
-            expressionParts(i) = strcat(num2str(coef), '*', term);
+        for i = 1:length(termInputs) % number of terms
+            coef = termInputs(i).coef.Value; % extracting the coefficients from the struct
+            term = termInputs(i).term.Value; % extracting the terms
+            expressionParts(i) = strcat(num2str(coef), '*', term); % the coefficients and terms that belong together are multiplied
         end
 
-        expression = strjoin(expressionParts, ' + ');
+        expression = strjoin(expressionParts, ' + '); % all the parts are added to one expression
         expression = char(expression);  % Convert to character array (string scalar)
-        target_value = str2func(['@(t)' expression]);
+        target_value = str2func(['@(t)' expression]); % creating a functions that is depending on t
+   
         disp(['Created Expression: ', expression]);
 
         % closing the field at the end
