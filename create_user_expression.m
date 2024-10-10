@@ -61,7 +61,7 @@ function create_user_expression()
                     yPos = yPos - 30;
 
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
-                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't^2', 't^3', 't^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1/t'}, 'Position', [150 yPos 100 22]);
+                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't.^2', 't.^3', 't.^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1/t'}, 'Position', [150 yPos 100 22]);
 
                     yPos = yPos - 40;
                 end
@@ -91,7 +91,17 @@ function create_user_expression()
         expression = char(expression);  % Convert to character array (string scalar)
         target_value = str2func(['@(t)' expression]);
         disp(['Created Expression: ', expression]);
+
+        % closing the field at the end
+            existingFig = findall(0, 'Type', 'figure', 'Name', 'Expression Builder');
+             if ~isempty(existingFig)
+             close(existingFig);
+             end
         
-        
+        % for testing prupose: 
+        t = 0:0.01:10;
+        y = target_value(t);
+        plot(t, y);
+
     end
 end
