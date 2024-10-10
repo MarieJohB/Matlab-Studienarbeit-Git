@@ -1,15 +1,15 @@
-function get_bode(G)
+function get_bode(L)
 % Function to plot the Bode diagram of a transfer function and calculate gain margin, phase margin, and crossover frequency
 
 % Check if the input is a valid transfer function
-if ~isa(G, 'tf')
+if ~isa(L, 'tf')
   error('Input must be a transfer function object');
 end
   
 % Calculate margins
-[Gm, Pm, Wcg, Wcp] = margin(G);
+[Gm, Pm, Wcg, Wcp] = margin(L);
     
-margin(G);
+margin(L);
 
 % Output the calculated values
 fprintf('Gain Margin: %.2f dB\n', 20*log10(Gm));
