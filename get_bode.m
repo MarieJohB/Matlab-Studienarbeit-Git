@@ -16,7 +16,6 @@ figure;
 bode(A);
 title('Bode Diagramm');
 
-
 % Output the calculated values
 fprintf('Gain Margin: %.2f dB\n', 20*log10(Gm));
 fprintf('Phase Margin: %.2f°\n', Pm);
