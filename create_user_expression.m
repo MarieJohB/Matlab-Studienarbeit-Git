@@ -9,15 +9,22 @@ function create_user_expression()
 
 
     % creating a figure for user interaction
-    fig = uifigure('Name', 'Expression Builder');
+    fig = uifigure('Name', 'Expression Builder', 'Position', [100 100 400 500]);
+
+    % Create a scrollable panel
+    % needs to be scrollable in case of multiple terms
+    scrollPanel = uipanel(fig, 'Position', [10 10 380 480], 'Scrollable', 'on');
+
+
     
+
     % 1. choose how many terms the expression should contain
-    uilabel(fig, 'Position', [20 350 200 22], 'Text', 'Select number of terms:');
+    uilabel(scrollPanel, 'Position', [20 350 200 22], 'Text', 'Select number of terms:');
     % input for user to enter a value
-    inputField = uieditfield(fig, 'text', 'Position', [150 350 200 22]);
+    inputField = uieditfield(scrollPanel, 'text', 'Position', [150 350 200 22]);
 
     % Button to get the answer
-    submitButton = uibutton(fig, 'Position', [200 300 100 22], 'Text', 'Submit', 'ButtonPushedFcn', @(btn, event) process_input());
+    submitButton = uibutton(scrollPanel, 'Position', [200 300 100 22], 'Text', 'Submit', 'ButtonPushedFcn', @(btn, event) process_input());
     
     function process_input()
 
@@ -48,21 +55,25 @@ function create_user_expression()
             yPos = 300;
             termInputs = struct();
                 for i = 1:number
-                    uilabel(fig, 'Position', [20 yPos 100 22], 'Text', ['Coefficient ', num2str(i), ':']);
-                    termInputs(i).coef = uieditfield(fig, 'numeric', 'Position', [150 yPos 100 22]);
+                    uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Coefficient ', num2str(i), ':']);
+                    termInputs(i).coef = uieditfield(scrollPanel, 'numeric', 'Position', [150 yPos 100 22]);
 
                     yPos = yPos - 40;
 
-                    uilabel(fig, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
-                    termInputs(i).term = uidropdown(fig, 'Items', {'t', 't^2', 'sin(t)', 'cos(t)', 'exp(t)'}, 'Position', [150 yPos 100 22]);
+                    uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
+                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't^2', 'sin(t)', 'cos(t)', 'exp(t)'}, 'Position', [150 yPos 100 22]);
 
                     yPos = yPos - 40;
                 end
 
             % Button to create the expression
-            uibutton(fig, 'Position', [390 50 120 22], 'Text', 'Create Expression', 'ButtonPushedFcn', @(btn, event) create_expression(termInputs));
+            % Positioning at the bottom of field
+
+            uibutton(scrollPanel, 'Position', [20 yPos 150 22], 'Text', 'Create Expression', 'ButtonPushedFcn', @(btn, event) create_expression(termInputs));
+        
             end
         end
+        
     end
 
     function create_expression(termInputs)
@@ -80,6 +91,7 @@ function create_user_expression()
         expression = char(expression);  % Convert to character array (string scalar)
         target_value = str2func(['@(t)' expression]);
         disp(['Created Expression: ', expression]);
-        % Optional: Further processing with target_value
+        
+        
     end
 end
