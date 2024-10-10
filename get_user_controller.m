@@ -1,4 +1,4 @@
-function C = get_user_controller()
+function K = get_user_controller()
     % Controller selection dialog
     controller_type = menu('Choose a controller type:', ...
         'Proportional (P)', 'Proportional-Integral (PI)', 'Proportional-Derivative (PD)', ...
@@ -41,7 +41,7 @@ function C = get_user_controller()
             dlgtitle = 'Custom Controller Input';
         otherwise
             disp('No controller selected.');
-            C = [];
+            K = [];
             return;
     end
 
@@ -56,51 +56,51 @@ function C = get_user_controller()
         switch controller_type
             case 1 % P Controller
                 Kp = str2double(answer{1});
-                C = pid(Kp, 0, 0);
+                K = pid(Kp, 0, 0);
             case 2 % PI Controller
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
-                C = pid(Kp, Ki, 0);
+                K = pid(Kp, Ki, 0);
             case 3 % PD Controller
                 Kp = str2double(answer{1});
                 Kd = str2double(answer{2});
-                C = pid(Kp, 0, Kd);
+                K = pid(Kp, 0, Kd);
             case 4 % PID Controller
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
                 Kd = str2double(answer{3});
-                C = pid(Kp, Ki, Kd);
+                K = pid(Kp, Ki, Kd);
             case 5 % PT1 Controller
                 Kp = str2double(answer{1});
                 T = str2double(answer{2});
-                C = tf([Kp], [T 1]);
+                K = tf([Kp], [T 1]);
             case 6 % PIT1 Controller
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
                 T = str2double(answer{3});
-                C = tf([Kp*Ki Kp], [T 1 0]);
+                K = tf([Kp*Ki Kp], [T 1 0]);
             case 7 % I2 Controller
                 Ki = str2double(answer{1});
-                C = tf([Ki], [1 0 0]);
+                K = tf([Ki], [1 0 0]);
             case 8 % PIDT1 Controller
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
                 Kd = str2double(answer{3});
                 T = str2double(answer{4});
-                C = tf([Kd Kp Ki], [T 1 0]);
+                K = tf([Kd Kp Ki], [T 1 0]);
             case 9 % Custom Controller
                 num = str2num(answer{1}); %#ok<ST2NM>
                 den = str2num(answer{2}); %#ok<ST2NM>
-                C = tf(num, den);
+                K = tf(num, den);
         end
     catch
         uiwait(msgbox('Invalid input. Please enter the gains and time constant correctly.', 'Error','error'));
-        C = [];
+        K = [];
     end
 
     % Display the controller transfer function
-    if ~isempty(C)
+    if ~isempty(K)
         disp('The entered controller is:');
-        disp(C);
+        disp(K);
     end
 end
