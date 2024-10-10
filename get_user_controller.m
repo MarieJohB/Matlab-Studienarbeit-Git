@@ -8,7 +8,7 @@ function K = get_user_controller()
     Kp = 0;
     Ki = 0;
     Kd = 0;
-    T = 0;
+    t_controller = 0;
 
     switch controller_type
         case 1 % P Controller
@@ -72,13 +72,13 @@ function K = get_user_controller()
                 K = pid(Kp, Ki, Kd);
             case 5 % PT1 Controller
                 Kp = str2double(answer{1});
-                T = str2double(answer{2});
-                K = tf([Kp], [T 1]);
+                t_controller = str2double(answer{2});
+                K = tf([Kp], [t_controller 1]);
             case 6 % PIT1 Controller
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
-                T = str2double(answer{3});
-                K = tf([Kp*Ki Kp], [T 1 0]);
+                t_controller = str2double(answer{3});
+                K = tf([Kp*Ki Kp], [t_controller 1 0]);
             case 7 % I2 Controller
                 Ki = str2double(answer{1});
                 K = tf([Ki], [1 0 0]);
@@ -86,8 +86,8 @@ function K = get_user_controller()
                 Kp = str2double(answer{1});
                 Ki = str2double(answer{2});
                 Kd = str2double(answer{3});
-                T = str2double(answer{4});
-                K = tf([Kd Kp Ki], [T 1 0]);
+                t_controller = str2double(answer{4});
+                K = tf([Kd Kp Ki], [t_controller 1 0]);
             case 9 % Custom Controller
                 num = str2num(answer{1}); %#ok<ST2NM>
                 den = str2num(answer{2}); %#ok<ST2NM>
