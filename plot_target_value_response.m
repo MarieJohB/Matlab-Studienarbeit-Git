@@ -1,7 +1,7 @@
-function plot_target_value_response(G, target_value)
+function plot_target_value_response(L, target_value)
     % Display the transfer function
     disp('Transfer Function:');
-    disp(G);
+    disp(L);
 
     % Define the time vector
     t = linspace(0, 10, 1000); % 0 to 10 seconds with 1000 points
@@ -14,7 +14,7 @@ function plot_target_value_response(G, target_value)
     end
 
     % Define the unity feedback system
-    closed_loop_system = feedback(G, 1);
+    closed_loop_system = feedback(L, 1);
 
     % Calculate the system response
     [y, t_out] = lsim(closed_loop_system, target, t);
