@@ -5,22 +5,41 @@ function G = get_user_transfer_function()
     dlgtitle = 'Transfer Function Input';
     dims = [1 50];
 
-    % Display input dialog
-    answer = inputdlg(prompt, dlgtitle, dims);
+    % Initialize G to be empty
+    G = [];
 
-    % Validate input and create the transfer function
-    try
-        num = str2num(answer{1}); %#ok<ST2NM>
-        den = str2num(answer{2}); %#ok<ST2NM>
-        G = tf(num, den);
-    catch
-        uiwait(msgbox('Invalid input. Please enter the coefficients correctly.', 'Error','error'));
-        G = [];
+    % Loop until valid coefficients are entered or user cancels the dialog
+    while isempty(G)
+        % Display input dialog
+        answer = inputdlg(prompt, dlgtitle, dims);
+
+        % Check if user cancelled the dialog
+        if isempty(answer)
+            disp('Operation cancelled by user.');
+            return;
+        end
+
+        % Validate input and create the transfer function
+        try
+            % Replace commas with periods
+            num_str = strrep(answer{1}, ',', '.');
+            den_str = strrep(answer{2}, ',', '.');
+
+            num = str2num(num_str); %#ok<ST2NM>
+            den = str2num(den_str); %#ok<ST2NM>
+            
+            if isempty(num) || isempty(den)
+                error('Invalid input. Please enter non-empty coefficient vectors.');
+            end
+            
+            G = tf(num, den);
+        catch
+            uiwait(msgbox('Invalid input. Please enter the coefficients correctly.', 'Error', 'error'));
+            G = [];
+        end
     end
-    
+
     % Display the transfer function
-    if ~isempty(G)
-        disp('The entered transfer function is:');
-        disp(G);
-    end
+    disp('The entered transfer function is:');
+    disp(G);
 end
