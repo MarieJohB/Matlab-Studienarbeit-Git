@@ -1,5 +1,5 @@
 function get_nyquist(L)
-%Plot the nyquist diagram+
+%Plot the nyquist diagram
 
 nyquist(L);
 

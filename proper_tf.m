@@ -8,9 +8,9 @@ syms s; % set 's' as symbolic variable
 G_sys = poly2sym(Num,s)/poly2sym(Den,s); 
 
 if limit(G_sys, s, inf) < inf
-    disp('Transferfunction is proper');
+    %disp('Transferfunction is proper');
     is_proper = true;
 else
-    disp('Transferfunction is not proper');
+    %disp('Transferfunction is not proper');
     is_proper = false;
 end
