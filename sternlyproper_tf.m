@@ -5,13 +5,20 @@ syms s; % set 's' as symbolic variable
 
 % Initialize output variables
 
-[Num,Den] = tfdata(G,'v');
+[num,den] = tfdata(G,'v');
 
-G_sys = poly2sym(Num,s)/poly2sym(Den,s); 
+% creating symbolic transferfunction 
+G_sys = poly2sym(num,s)/poly2sym(den,s); 
 
-is_sternlyproper = false;
+
 
 if limit(G_sys, s, inf) == 0
 % Transfer function is sternly proper
 is_sternlyproper = true;
+%disp('Function is sternly proper');
+else
+is_sternlyproper = false;
+%disp('Function is NOT sternly proper');
+end 
+
 end

@@ -9,19 +9,25 @@ function [ev_G, stab_G] = stability_eigenvalues(G)
 % stab_G: status whether G is stable or not
 
 
-syms s; % set 's' as sybolic variable
 
-% calculation of eigenvalues / poles of G
-ev_G = eig(G);
 
-% testing stability criteria:
-if max(real(ev_G))>=0
-    disp('System is not asymptotically stable');
-    stab_G = false;
 
-elseif max(real(ev_G))<0
-    disp('System is asymptotically stable');
-    stab_G = true;
-end
+syms s; % define s as symbolc variable
+s = tf('s');
+
+    % calculation of eigenvalues
+    ev_G = eig(G);
+
+        % testing stability criteria:
+        % highest eigenvalue < 0: stable
+        % at least 1 (the highest) eigenvalue >= 0: not stable
+        if max(real(ev_G))>=0 
+         disp('System is not asymptotically stable');
+         stab_G = false;
+
+        elseif max(real(ev_G))<0
+         disp('System is asymptotically stable');
+         stab_G = true;
+        end
 
 end

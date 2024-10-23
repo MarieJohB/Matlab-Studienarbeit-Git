@@ -64,7 +64,7 @@ function create_user_expression()
                     
                     % create dropdown so user can select the term
                     uilabel(scrollPanel, 'Position', [20 yPos 100 22], 'Text', ['Term ', num2str(i), ':']);
-                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't.^2', 't.^3', 't.^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1/t'}, 'Position', [150 yPos 100 22]);
+                    termInputs(i).term = uidropdown(scrollPanel, 'Items', {'t', 't.^2', 't.^3', 't.^4', 'sin(t)', 'cos(t)', 'exp(t)', 'tan(t)', 'atan(t)', 'sqrt(t)', '1./t', '1./t^2'}, 'Position', [150 yPos 100 22]);
 
                     yPos = yPos - 40;
                 end
