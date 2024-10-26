@@ -11,7 +11,7 @@ function [m_0, n_0, deltaphi] = countPolesforNyquist(L)
         if real(poles(k)) > 0
             m_0 = m_0 + 1;
         end
-        if real(poles(k)) == 0 && imag(poles(k)) ~= 0
+        if real(poles(k)) == 0 && imag(poles(k)) ~= 0 | real(poles(k)) == 0 && imag(poles(k)) == 0
             n_0 = n_0 + 1;
         end
     end
