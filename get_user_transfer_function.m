@@ -24,14 +24,14 @@ function G = get_user_transfer_function()
             % Replace commas with periods
             num_str = strrep(answer{1}, ',', '.');
             den_str = strrep(answer{2}, ',', '.');
+            % Split by space to handle zeroes correctly
+            num = str2double(strsplit(num_str, ' '));
+            den = str2double(strsplit(den_str, ' '));
 
-            num = str2num(num_str); %#ok<ST2NM>
-            den = str2num(den_str); %#ok<ST2NM>
-            
-            if isempty(num) || isempty(den)
+            if any(isnan(num)) || any(isnan(den))
                 error('Invalid input. Please enter non-empty coefficient vectors.');
             end
-            
+
             G = tf(num, den);
         catch
             uiwait(msgbox('Invalid input. Please enter the coefficients correctly.', 'Error', 'error'));
