@@ -78,11 +78,4 @@ function is_stable = routh_hurwitz_tf(G)
     end
     fprintf('\n Number of right hand side poles = %2.0f\n', unstablePoles);
     
-    % Optional: Show roots of the system
-   % reply = input('Do you want roots of the system to be shown? Y/N ', 's');
-   % if reply == 'y' || reply == 'Y'
-   %     sysRoots = roots(coeffVector);
-   %     disp('Given polynomial coefficients roots:');
-   %     disp(sysRoots);
-   % end
 end

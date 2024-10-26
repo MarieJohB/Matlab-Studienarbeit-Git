@@ -23,7 +23,7 @@ function plot_system_response_with_parameters(L, target_value, d1, d2)
 
     % Define the time vector
     t = linspace(start_time, end_time, 1000); % Start time to end time with 1000 points
-
+ 
     % Calculate the target value
     if isa(target_value, 'function_handle')
         target = arrayfun(target_value, t); % Evaluate the function handle over time
