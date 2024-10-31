@@ -2,7 +2,7 @@ function target_value = get_target_value()
     % Initialize target_value to be empty
     target_value = [];
 
-        % Loop until valid input is provided or user cancels the dialog
+    % Loop until valid input is provided or user cancels the dialog
     while isempty(target_value)
         % Prompt for target value (constant or time-dependent)
         prompt = {'Enter the target value (use "t" for time-dependent values, e.g., "5" or "sin(t)"): '};
