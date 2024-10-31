@@ -1,5 +1,5 @@
 function [control_loop_stability] = control_loop_stability(G,K,S)
-%Function to determin if a controll loop is stable 
+%Function to determine if a controll loop is stable 
 % G(s) & K(s) needs to be proper and stable
 % S(s) needs to be stable 
 
