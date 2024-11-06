@@ -98,147 +98,66 @@ function piecewise_function_input(selection_fig)
 
     end
 
+    % get time vector
+    [start_time, end_time, time_steps] = get_time_vector(num_sections);
 
+    % get function for every time section 
 
-        % initalize variables to for  start time, end time and steps
-        start_time = NaN * ones(1, num_sections);
-        end_time = NaN * ones(1, num_sections);
-        time_steps = NaN * ones(1, num_sections);
-        target_value = NaN * ones(1, num_sections);
-
-    for i = 1:num_sections
-    
-        while isnan(start_time(i)) || isnan(end_time(i)) || isnan(time_steps(i)) || isnan(target_value(i))
+    % initialize array for functions
+    target_value = cell(1, num_sections);
+% fill array with functions created by user
+for i = 1:num_sections
+    % loop until correct input or user cancels
+    while isempty(target_value{i})
+        % request input
+        prompt = {'Enter the target value (use "t" for time-dependent values, e.g., "5" or "sin(t)"): '};
+        dlgtitle = 'Target Value Input';
+        dims = [1 50];
+        answer = inputdlg(prompt, dlgtitle, dims);
+        
+        % check if user cancelled 
+        if isempty(answer)
+            disp('Operation cancelled by user.');
+            return;
+        end
+        
+        % Validate the entered input
+        try
+            % replacing commas with periods
+            target_value_str = strrep(answer{1}, ',', '.');
             
-            if i==1
-             
-            % define request for user input
-            prompt = {'Start Time:', 'End Time:', 'Time Steps:', 'Function for this section:'};
-            dlgtitle = 'Input';
-            dims = [1 35];
-            answer = inputdlg(prompt, dlgtitle, dims);
-
-                % Check if user cancelled the dialog
-                if isempty(answer)
-                    disp('Operation cancelled by user.');
-                       return;
-                end
-
-            start_time_str = strrep(answer{1}, ',', '.');
-            start_time(i) = str2double(start_time_str);
-
-            end_time_str = strrep(answer{2}, ',', '.');
-            end_time(i) = str2double(end_time_str);
-
-            time_steps_str = strrep(answer{3}, ',', '.');
-            time_steps(i) = str2double(time_steps_str);
-
-            %checking if end > start:
-            if start_time(i) > end_time(i)
-                uiwait(msgbox('Invalid input. Please make sure that end happens after start.', 'Error', 'error'));
-                start_time(i) = NaN;
-                end_time(i) = NaN;
-            end
-
-            % checking if step size is compatible with time span
-            numSteps = (end_time(i) - start_time(i)) / time_steps(i);
-            if mod(numSteps, 1) ~= 0
-                uiwait(msgbox('Invalid input. Please enter suitable size for time steps.', 'Error', 'error'));
-                time_steps(i) = NaN;
-            end
-
-
-            % Validate input
-            try
-            % Replace commas with periods
-            target_value_str = strrep(answer{4}, ',', '.');
-            % Test the input
-            t = 0; % Dummy value for validation
-            target_value(i) = eval(target_value_str);
-            if isnan(target_value(i))
+            % check whether string is empty
+            if isempty(strtrim(target_value_str))
                 error('Invalid input. Please enter a valid expression.');
             end
-            % Define the target value as a function of time if it contains "t"
+            
+            % does input contain 't' --> time dependent function
             if contains(target_value_str, 't')
-                target_value(i) = str2func(['@(t)', target_value_str]);
+                % create and test function
+                test_func = str2func(['@(t)', target_value_str]);
+                test_result = test_func(0); % dummy value for test
+                % if test does not fail: save function in array
+                target_value{i} = test_func;
             else
+                % no 't' contained --> constant value / not time dependent 
+                eval_value = str2double(target_value_str);
+                if isnan(eval_value)
+                    error('Invalid input. Please enter a valid expression.');
+                end
                 % If it's a constant value, create a function that returns the constant + 0*t
-                target_value(i) = str2func(['@(t)', target_value_str, ' + 0*t']);
+                target_value{i} = str2func(['@(t)', num2str(eval_value), ' + 0*t']);
             end
-            catch
-                uiwait(msgbox('Invalid input. Please enter the expression correctly.', 'Error', 'error'));
-                target_value(i) = NaN;
-            end
-        
-
-
-
-
-            elseif i > 1 
-                % for the following sections
-                % end time is the start time for the next section
-                % define request for user input
-                prompt = {'End Time:', 'Time Steps:', 'Function for this section:'};
-                dlgtitle = 'Input';
-                dims = [1 35];
-                answer = inputdlg(prompt, dlgtitle, dims);
-
-                % Check if user cancelled the dialog
-                if isempty(answer)
-                    disp('Operation cancelled by user.');
-                       return;
-                end
-
-            
-                start_time(i) = end_time(i-1);
-
-                end_time_str = strrep(answer{1}, ',', '.');
-                end_time(i) = str2double(end_time_str);
-    
-                time_steps_str = strrep(answer{2}, ',', '.');
-                time_steps(i) = str2double(time_steps_str);
-
-                %checking if end > start:
-                if start_time(i) > end_time(i)
-                    uiwait(msgbox('Invalid input. Please make sure that end happens after start.', 'Error', 'error'));
-                    start_time(i) = [];
-                    end_time(i) = [];
-                end
-
-                % checking if step size is compatible with time span
-                numSteps = (end_time(i) - start_time(i)) / time_steps(i);
-                if mod(numSteps, 1) ~= 0
-                    uiwait(msgbox('Invalid input. Please enter suitable size for time steps.', 'Error', 'error'));
-                    time_steps(i) = [];
-                end
-
-
-                % Validate input
-                try
-                % Replace commas with periods
-                target_value_str = strrep(answer{3}, ',', '.');
-                % Test the input
-                t = 0; % Dummy value for validation
-                target_value(i) = eval(target_value_str);
-                if isnan(target_value(i))
-                error('Invalid input. Please enter a valid expression.');
-                end
-                % Define the target value as a function of time if it contains "t"
-                if contains(target_value_str, 't')
-                    target_value(i) = str2func(['@(t)', target_value_str]);
-                    else
-                    % If it's a constant value, create a function that returns the constant + 0*t
-                    target_value(i) = str2func(['@(t)', target_value_str, ' + 0*t']);
-                end
-                catch
-                uiwait(msgbox('Invalid input. Please enter the expression correctly.', 'Error', 'error'));
-                target_value(i) = NaN;
-                end
-        
-            end
-        
+        catch
+            uiwait(msgbox('Invalid input. Please enter the expression correctly.', 'Error', 'error'));
+            target_value{i} = [];
         end
     end
+end
+
+% Anzeigen der gespeicherten Funktionen zur Überprüfung
+disp('Stored functions:');
+disp(target_value);
+
 
 disp('Start times:'); 
 disp(start_time);
