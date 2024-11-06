@@ -1,5 +1,7 @@
 
 function target_value = get_target_value_version2()
+    % output: 
+    % if continous: 
     % Initialize target_value to be empty
     target_value = [];
 
@@ -149,7 +151,7 @@ function piecewise_function_input(selection_fig)
             % Validate input
             try
             % Replace commas with periods
-            target_value_str = strrep(answer{1}, ',', '.');
+            target_value_str = strrep(answer{4}, ',', '.');
             % Test the input
             t = 0; % Dummy value for validation
             target_value(i) = eval(target_value_str);
