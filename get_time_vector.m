@@ -33,11 +33,19 @@ function [start_time, end_time, time_steps] = get_time_vector(num_sections)
             time_steps_str = strrep(answer{3}, ',', '.');
             time_steps(i) = str2double(time_steps_str);
 
+            % check if end and start > 0;
+
             %checking if end > start:
-            if start_time(i) > end_time(i)
+            if start_time(i) >= end_time(i)
                 uiwait(msgbox('Invalid input. Please make sure that end happens after start.', 'Error', 'error'));
                 start_time(i) = NaN;
                 end_time(i) = NaN;
+            end
+
+            % check if end and start > 0;
+            if start_time(i) < 0
+                uiwait(msgbox('Invalid input. Please enter positive values only.', 'Error', 'error'));
+                start_time(i) = NaN;
             end
 
             % checking if step size is compatible with time span
