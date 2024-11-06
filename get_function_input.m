@@ -1,6 +1,6 @@
 function user_function = get_function_input()
 
-taret_value = [];
+target_value = [];
 
 while isempty(target_value)
         % request input
