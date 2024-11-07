@@ -13,21 +13,35 @@ function target_value = get_target_value_version2()
         'ButtonPushedFcn', @(btn, event) continuous_function_input(selection_fig));
     uibutton(selection_fig, 'Position', [50, 20, 200, 50], 'Text', 'Define Function in Sections', ...
         'ButtonPushedFcn', @(btn, event) piecewise_function_input(selection_fig));
+
+    % continue in the main function after target_value was entered in other
+    % functions
+    uiwait(selection_fig);
+
+    % set the target_value in the main function 
+    target_value = getappdata(selection_fig, 'target_value');
+
+    % Close the selection figure
+    close(selection_fig);
 end
 
 
 function continuous_function_input(selection_fig)
 
-    % Close the selection figure
-    close(selection_fig);
-
-    target_value = get_function_input();
     
+    % get the users input
+    target_value = get_function_input();
+
+    % give the target_function to the main function
+    setappdata(selection_fig, 'target_value', target_value);
+
+     % Resume execution in the main function 
+     uiresume(selection_fig);
+
 end
 
 function piecewise_function_input(selection_fig)
-    % Close the selection figure
-    close(selection_fig);
+    
     
     % initalize variable for number of sections
     num_sections = [];
@@ -85,6 +99,11 @@ disp('Time steps:');
 disp(time_steps);
 disp('Target values:'); 
 disp(target_value);
+
+ % give the target_function to the main function
+  setappdata(selection_fig, 'target_value', target_value);
+ % Resume execution in the main function 
+  uiresume(selection_fig);
 
 end
 
