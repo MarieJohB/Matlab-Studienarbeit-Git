@@ -77,12 +77,15 @@ function piecewise_function_input(selection_fig)
     [start_time, end_time, time_steps] = get_time_vector(num_sections);
 
     % get function for every time section 
-
     % initialize array for functions
     target_value = cell(1, num_sections);
 % fill array with functions created by user
 for i = 1:num_sections
-    
+
+    %adding information for user: time sections
+    message = sprintf('The following time vector has been set for section %.0f: \nStart Time: %.2f \nEnd Time: %.2f \nTime Steps: %.2f \nPlease enter a function', i, start_time(i), end_time(i), time_steps(i));
+    uiwait(msgbox(message, 'Information', 'modal'));
+
      target_value{i} = get_function_input;
 end
 
