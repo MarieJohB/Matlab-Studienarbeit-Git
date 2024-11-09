@@ -1,4 +1,13 @@
 function [start_time, end_time, time_steps] = get_time_vector(num_sections)
+
+% initializing persistent variables to check if the function was called
+% before and the time vector was already entered be the user
+persistent start_value;
+persistent end_value;
+persistent steps_value;
+
+if isempty(start_value) || isempty(end_value) ||isempty(steps_value)
+% if the persistend variables are empty: fill them 
  % initalize variables to for  start time, end time and steps
  start_time = NaN * ones(1, num_sections);
  end_time = NaN * ones(1, num_sections);
@@ -103,4 +112,24 @@ function [start_time, end_time, time_steps] = get_time_vector(num_sections)
              end
          end
 
+% save the defined values in persistend variables
+start_value = start_time;
+end_value = end_time;
+steps_value = time_steps;
+
+ end
+
+
+
+
+else % if time vector has been set already
+% saved values in the persistent variables are given back as the previously
+% defined time vector
+
+start_time = start_value;
+end_time = end_value;
+time_steps = steps_value;
+
+
+end
 end
