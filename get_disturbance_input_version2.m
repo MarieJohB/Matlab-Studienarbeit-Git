@@ -15,7 +15,8 @@ min_time_step = min(time_steps);
     message = sprintf('The disturbance will be defined from start time= %.2f until end time %.2f \n Please enter an expression for the disturbance', min_start_time, max_end_time);
     uiwait(msgbox(message, 'Information', 'modal'));
 
-    t = linspace(min_start_time, max_end_time, min_time_step);
+    num_steps = (end_time - start_time) / min_time_step;
+    t = linspace(min_start_time, max_end_time, num_steps + 1);
 
     disturbance = get_function_input();
 
@@ -42,8 +43,8 @@ min_time_step = min(time_steps);
         % disturbance is defined continous
         message = sprintf('The disturbance will be defined from start time= %.2f until end time %.2f \n Please enter an expression for the disturbance', min_start_time, max_end_time);
         uiwait(msgbox(message, 'Information', 'modal'));
-
-        t = linspace(min_start_time, max_end_time, min_time_step);
+        num_steps = (end_time - start_time) / min_time_step;
+        t = linspace(min_start_time, max_end_time, num_steps + 1);
 
         disturbance = get_function_input();
     end
