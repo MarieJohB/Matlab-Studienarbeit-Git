@@ -4,7 +4,7 @@ function [start_time, end_time, time_steps] = get_time_vector(num_sections)
 % before and the time vector was already entered be the user
 persistent start_value;
 persistent end_value;
-persistent steps_value;
+persistent steps_value; %later use of lsim -> individula time steps will be adjusted
 
 if isempty(start_value) || isempty(end_value) ||isempty(steps_value)
 % if the persistend variables are empty: fill them 

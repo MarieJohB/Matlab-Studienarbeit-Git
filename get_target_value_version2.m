@@ -1,5 +1,4 @@
-
-function target_value = get_target_value_version2()
+function [target_value, num_sections] = get_target_value_version2()
     % output: 
     % if continous: 
     % Initialize target_value to be empty
@@ -20,6 +19,10 @@ function target_value = get_target_value_version2()
 
     % set the target_value in the main function 
     target_value = getappdata(selection_fig, 'target_value');
+   % set the number of sections in the main function 
+    num_sections = getappdata(selection_fig, 'num_sections');
+
+
 
     % Close the selection figure
     close(selection_fig);
@@ -28,12 +31,21 @@ end
 
 function continuous_function_input(selection_fig)
 
-    
+    % continous function -> only one section
+    num_sections = 1; 
+
+    % get time vector
+    clear get_time_vector; % time vector shall be definded new so it must be clear first
+    [start_time, end_time, time_steps] = get_time_vector(1);
+
     % get the users input
     target_value = get_function_input();
 
+
     % give the target_function to the main function
     setappdata(selection_fig, 'target_value', target_value);
+    % give the number of sections to the main function
+    setappdata(selection_fig, 'num_sections', num_sections);
 
      % Resume execution in the main function 
      uiresume(selection_fig);
@@ -74,6 +86,7 @@ function piecewise_function_input(selection_fig)
     end
 
     % get time vector
+    clear get_time_vector;% time vector shall be definded new so it must be clear first
     [start_time, end_time, time_steps] = get_time_vector(num_sections);
 
     % get function for every time section 
@@ -105,6 +118,8 @@ disp(target_value);
 
  % give the target_function to the main function
   setappdata(selection_fig, 'target_value', target_value);
+ % give the number of sections to the main function
+  setappdata(selection_fig, 'num_sections', num_sections);
  % Resume execution in the main function 
   uiresume(selection_fig);
 
