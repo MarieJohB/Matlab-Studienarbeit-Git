@@ -1,11 +1,14 @@
-function plot_target_value_response_version2(L, target_value, start_time, end_time, time_steps)
+function plot_target_value_response_version2(L, target_value)
     % first: check whether the target value was defined piecewise or continuous
     num_sections = length(target_value);
 
+    % call function to get time sections
+    [start_time, end_time, time_steps] = get_time_vector(num_sections);
+  
+
     if num_sections == 1 % target value is continuous
         % Define the time vector
-        num_steps = (end_time - start_time) / time_steps; % calculate number of steps
-        t = linspace(start_time, end_time, num_steps + 1)'; % create time vector with specified values, transpose to column vector
+        [t] = create_linear_time_vector(1);
         u = target_value;
 
         % Calculate the system response based on the type of target value
