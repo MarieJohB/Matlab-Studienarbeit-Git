@@ -12,7 +12,7 @@ num_sections = length(end_time);
 
 if num_sections == 1 % target value is continuous
         % Define the time vector
-        num_steps = (end_time - start_time) / time_steps; % calculate number of steps
+        num_steps = round((end_time(i) - start_time(i)) / min(time_steps)); % calculate integer number of steps
         t = linspace(start_time, end_time, num_steps + 1)'; % create time vector with specified values, transpose to column vector
 
 
