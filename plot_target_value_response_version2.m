@@ -11,7 +11,7 @@ function plot_target_value_response_version2(L, target_value)
         [t] = create_linear_time_vector(1);
         u = target_value;
 
-        % Calculate the system response based on the type of target value
+       
         if isa(u, 'function_handle')
             target = arrayfun(u, t); % Evaluate the function handle over time
         else
@@ -62,8 +62,8 @@ function plot_target_value_response_version2(L, target_value)
     disp(size(target)); % Output the size of target
     disp('Time vector t:');
     disp(size(t)); % Output the size of t
-    disp('Time vector t values:');
-    disp(t'); % Display the actual time vector values for verification
+    
+    disp(target); % test purposes
 
     % Ensure the time vector is monotonically increasing and evenly spaced
     if any(diff(t) <= 0)

@@ -1,7 +1,10 @@
-function disturbance = get_disturbance_input_version2(start_time, end_time, time_steps)
+function disturbance = get_disturbance_input_version2()
 
 
-num_sections = length(start_time);
+% call function to get time sections
+[start_time, end_time, time_steps] = get_time_vector(1); % give 1 because it sould be irrelevant
+
+num_sections = length(end_time);
 
 min_start_time = min(start_time);
 max_end_time = max(end_time);
@@ -36,6 +39,9 @@ min_time_step = min(time_steps);
     if user_decision == true
         % disturbances are defined piecewise
         for i = 1:num_sections 
+            %adding information for user: time sections
+            message = sprintf('The following time vector has been set for section %.0f: \nStart Time: %.2f \nEnd Time: %.2f \nTime Steps: %.2f \nPlease enter a function', i, start_time(i), end_time(i), time_steps(i));
+            uiwait(msgbox(message, 'Information', 'modal'));
             disturbance{i} = get_function_input;
         end
 
