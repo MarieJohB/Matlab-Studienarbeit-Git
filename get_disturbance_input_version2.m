@@ -71,7 +71,7 @@ end
 function user_decision = button_dialog_disturbance()
 
    %create figure to ask user
-    fig = uifigure('Position', [100, 100, 300, 150], 'Name', 'Disturbance continuous or piecewise');
+    fig = uifigure('Position', [500, 500, 300, 150], 'Name', 'Disturbance continuous or piecewise');
 
      uilabel(fig, 'Position', [5, 110, 300, 50], 'Text', ... 
          'Is the disturbance continous or piecewise defined:', ... 
