@@ -18,9 +18,12 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
     G_sys = poly2sym(G_num, s) / poly2sym(G_den, s);
 
     % Calculate the limits
-    y_inf_1 = limit(s * T_sys * R_sys, s, 0);
-    e_inf_1 = limit(s * S_sys * R_sys, s, 0);
-    y_inf_2 = limit(s * S_sys * D1_sys, s, 0);
-    e_inf_2 = limit(-s * S_sys * D1_sys, s, 0);
-    e_inf_3 = limit(s * (S_sys * R_sys - G_sys * S_sys * D2_sys), s, 0);
-    cansysjump = limit(s * T_sys * R_sys, s, inf);
+    % output as double for further use in app
+    % to enable conversion num2str
+    y_inf_1 = double(limit(s * T_sys * R_sys, s, 0));
+    e_inf_1 = double(limit(s * S_sys * R_sys, s, 0));
+    y_inf_2 = double(limit(s * S_sys * D1_sys, s, 0));
+    e_inf_2 = double(limit(-s * S_sys * D1_sys, s, 0));
+    e_inf_3 = double(limit(s * (S_sys * R_sys - G_sys * S_sys * D2_sys), s, 0));
+    cansysjump = double(limit(s * T_sys * R_sys, s, inf));
+end
