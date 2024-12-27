@@ -1,4 +1,14 @@
 function [a, b_abs, b_rel, c, tr, ts] = calculateKeyParameters(t, y_total)
+
+
+
+% debugging checks
+disp('debugging in calculateKeyParameters')
+disp('t:');
+disp(length(t));
+disp('y_total:');
+disp(length(y_total));
+
     % Stationary value
     a = y_total(end);
     
