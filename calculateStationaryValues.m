@@ -1,14 +1,17 @@
 function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateStationaryValues(T_s, S_s, R_s, D1_s, D2_s, G_s)
-    % calculateStationaryValues berechnet die stationären Werte des Regelkreises.
-    % Diese Funktion unterstützt sowohl kontinuierliche als auch abschnittsweise
-    % definierte Funktionen für R, D1 und D2. Liegen Eingaben als double vor,
-    % werden sie in tf-Objekte konvertiert. Dabei wird sichergestellt, dass
-    % numerische Eingaben als Zeilenvektoren vorliegen, um Fehler bei tf zu vermeiden.
+    % calculateStationaryValues calculates the stationary values of the control loop
+    % the function supports continous functions as well as piecewise
+    % defined functions for r, d1 and d2
+    % should the inputs be of format double, a conversion into tf-objects
+    % is performed 
+    % It is also made sure that numeric inputs are defined as row-vectors
+    % to avoid issues with tf
     %
     % \ac{Robustheit} und \ac{Flexibilität} werden durch die Unterstützung
-    % unterschiedlicher Eingabetypen erreicht \cite{MatlabBestPractices2019}.
+    % unterschiedlicher Eingabetypen erreicht
+    % \cite{MatlabBestPractices2019}.???
     
-    % Sicherstellen, dass T_s, S_s und G_s als tf-Objekte vorliegen
+    % ensuring T_s, S_s and G_s are tf-objects
     if ~isa(T_s, 'tf')
         T_s = tf(T_s, 1);
     end
@@ -19,8 +22,9 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         G_s = tf(G_s, 1);
     end
     
-    % Konvertiere T_s, S_s und G_s in symbolische Übertragungsfunktionen.
-    % Verwende s = sym('s') anstelle von syms s, um Probleme in statischen Arbeitsbereichen zu vermeiden.
+    % convert T_s, S_s and G_s to symbolic transfer functions
+    % use of s = sym('s') istead of syms s, to avoid problems with static
+    % work spaces
     s = sym('s');
     [T_num, T_den] = tfdata(T_s, 'v');
     [S_num, S_den] = tfdata(S_s, 'v');
@@ -30,7 +34,7 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
     S_sys = poly2sym(S_num, s) / poly2sym(S_den, s);
     G_sys = poly2sym(G_num, s) / poly2sym(G_den, s);
     
-    % Hilfsfunktion: Sicherstellen, dass die Eingabe als Zell-Array vorliegt
+    % help-function: ensuring input to be a cell array
     function cellOut = ensureCell(x)
         if iscell(x)
             cellOut = x;
@@ -39,16 +43,17 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         end
     end
 
-    % Sicherstellen, dass R_s, D1_s und D2_s als Zell-Arrays vorliegen,
-    % um abschnittsweise und kontinuierliche Eingaben zu unterstützen.
+    % check R_s, D1_s and D2_s are cell arrays
+    % import to support continous functions and piecewise
+    % defined functions
     R_cell  = ensureCell(R_s);
     D1_cell = ensureCell(D1_s);
     D2_cell = ensureCell(D2_s);
     
-    % Bestimme die Anzahl der Segmente anhand der längsten Zell-Array-Länge
+    % find number of segments using longest length cell array
     nSeg = max([numel(R_cell), numel(D1_cell), numel(D2_cell)]);
     
-    % Initialisiere Ergebnisvektoren
+    % Initialization
     y_inf_1   = zeros(1, nSeg);
     e_inf_1   = zeros(1, nSeg);
     y_inf_2   = zeros(1, nSeg);
@@ -56,8 +61,8 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
     e_inf_3   = zeros(1, nSeg);
     cansysjump = zeros(1, nSeg);
     
-    % Hilfsfunktion zur Auswahl des Elements: Falls das i-te Segment nicht existiert,
-    % wird das erste Element (kontinuierliche Eingabe) verwendet.
+    %help-function for selection of an element: for the case that segment i
+    %does not exsist, the firt element is used (continous input)
     function out = selectSegment(cellArray, idx)
         if numel(cellArray) >= idx
             out = cellArray{idx};
@@ -66,38 +71,38 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         end
     end
 
-    % Schleife über alle Segmente bzw. bei kontinuierlicher Eingabe über ein einzelnes Segment
+    % loop over the segments 
     for i = 1:nSeg
-        % Auswahl der entsprechenden Segmente (oder kontinuierliche Werte, falls kein Array)
+        % selecting the segments (oder continous values, in case of no array)
         R_i  = selectSegment(R_cell, i);
         D1_i = selectSegment(D1_cell, i);
         D2_i = selectSegment(D2_cell, i);
         
-        % Konvertiere die Eingaben in tf-Objekte, falls notwendig. Dabei wird sichergestellt,
-        % dass numerische Eingaben als Zeilenvektoren vorliegen.
+        % conversion of inputs to tf-objects if neccessary. 
+        % Ensuring numeric inputs are row vectors
         if ~isa(R_i, 'tf')
             if isnumeric(R_i)
                 R_i = tf(R_i(:)', 1);
             else
-                error('R_i muss entweder numerisch oder ein tf-Objekt sein.');
+                error('R_i must be numeric oder or a tf-object.');
             end
         end
         if ~isa(D1_i, 'tf')
             if isnumeric(D1_i)
                 D1_i = tf(D1_i(:)', 1);
             else
-                error('D1_i muss entweder numerisch oder ein tf-Objekt sein.');
+                error('D1_i must be numeric oder or a tf-object.');
             end
         end
         if ~isa(D2_i, 'tf')
             if isnumeric(D2_i)
                 D2_i = tf(D2_i(:)', 1);
             else
-                error('D2_i muss entweder numerisch oder ein tf-Objekt sein.');
+                error('D2_i must be numeric oder or a tf-object.');
             end
         end
         
-        % Umwandlung in symbolische Übertragungsfunktionen
+        % Conversion onto symbolic transfer function
         [R_num, R_den]   = tfdata(R_i, 'v');
         [D1_num, D1_den] = tfdata(D1_i, 'v');
         [D2_num, D2_den] = tfdata(D2_i, 'v');
@@ -106,7 +111,7 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         D1_sys = poly2sym(D1_num, s) / poly2sym(D1_den, s);
         D2_sys = poly2sym(D2_num, s) / poly2sym(D2_den, s);
         
-        % Berechnung der stationären Werte für das aktuelle Segment
+        % calculating the stationary values for the current segment
         y_inf_1(i)    = double(limit(s * T_sys * R_sys, s, 0));
         e_inf_1(i)    = double(limit(s * S_sys * R_sys, s, 0));
         y_inf_2(i)    = double(limit(s * S_sys * D1_sys, s, 0));
@@ -115,7 +120,7 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         cansysjump(i) = double(limit(s * T_sys * R_sys, s, inf));
     end
 
-    % Falls nur ein Segment vorliegt, werden skalare Werte zurückgegeben
+    % For the case of only 1 segment, scalar values are returned
     if nSeg == 1
         y_inf_1    = y_inf_1(1);
         e_inf_1    = e_inf_1(1);
