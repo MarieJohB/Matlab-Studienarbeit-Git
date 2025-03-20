@@ -126,9 +126,3 @@ function piecewise_function_input(selection_fig)
     % Resume execution in the main function 
     uiresume(selection_fig);
 end
-
-
-
-
-
-

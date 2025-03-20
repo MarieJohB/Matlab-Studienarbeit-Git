@@ -1,40 +1,29 @@
+%---------------------------------------------------------------------
 function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateStationaryValues(T_s, S_s, R_s, D1_s, D2_s, G_s)
-    % calculateStationaryValues calculates the stationary values of the control loop
-    % the function supports continous functions as well as piecewise
-    % defined functions for r, d1 and d2
-    % should the inputs be of format double, a conversion into tf-objects
-    % is performed 
-    % It is also made sure that numeric inputs are defined as row-vectors
-    % to avoid issues with tf
+    % calculateStationaryValues calculates the steady-state values of the system
+    % via simulation. It supports continuous as well as piecewise inputs for R, D1, and D2.
     %
-    % \ac{Robustheit} und \ac{Flexibilität} werden durch die Unterstützung
-    % unterschiedlicher Eingabetypen erreicht
-    % \cite{MatlabBestPractices2019}.???
+    % If T_s, S_s, or G_s are numeric, they are converted to tf objects (ensuring row vectors).
+    % The steady-state values are obtained by simulating the step response over a fixed time interval
+    % (t_final) and taking the final value.
+    %
+    % Additionally, the "jumpability" is estimated by evaluating T(s)*R(s) at a high frequency.
     
-    % ensuring T_s, S_s and G_s are tf-objects
+    % Ensure T_s, S_s, and G_s are tf objects
     if ~isa(T_s, 'tf')
-        T_s = tf(T_s, 1);
+        T_s = tf(T_s(:)', 1);
     end
     if ~isa(S_s, 'tf')
-        S_s = tf(S_s, 1);
+        S_s = tf(S_s(:)', 1);
     end
     if ~isa(G_s, 'tf')
-        G_s = tf(G_s, 1);
+        G_s = tf(G_s(:)', 1);
     end
     
-    % convert T_s, S_s and G_s to symbolic transfer functions
-    % use of s = sym('s') istead of syms s, to avoid problems with static
-    % work spaces
-    s = sym('s');
-    [T_num, T_den] = tfdata(T_s, 'v');
-    [S_num, S_den] = tfdata(S_s, 'v');
-    [G_num, G_den] = tfdata(G_s, 'v');
+    % Use a default simulation horizon (adjust as needed)
+    t_final = 100;
     
-    T_sys = poly2sym(T_num, s) / poly2sym(T_den, s);
-    S_sys = poly2sym(S_num, s) / poly2sym(S_den, s);
-    G_sys = poly2sym(G_num, s) / poly2sym(G_den, s);
-    
-    % help-function: ensuring input to be a cell array
+    % Helper: Ensure input is a cell array
     function cellOut = ensureCell(x)
         if iscell(x)
             cellOut = x;
@@ -43,17 +32,15 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         end
     end
 
-    % check R_s, D1_s and D2_s are cell arrays
-    % import to support continous functions and piecewise
-    % defined functions
+    % Wrap R_s, D1_s, and D2_s in cell arrays if needed
     R_cell  = ensureCell(R_s);
     D1_cell = ensureCell(D1_s);
     D2_cell = ensureCell(D2_s);
     
-    % find number of segments using longest length cell array
+    % Determine the number of segments (nSeg) from the maximum length of the cell arrays
     nSeg = max([numel(R_cell), numel(D1_cell), numel(D2_cell)]);
     
-    % Initialization
+    % Preallocate outputs (one value per segment)
     y_inf_1   = zeros(1, nSeg);
     e_inf_1   = zeros(1, nSeg);
     y_inf_2   = zeros(1, nSeg);
@@ -61,8 +48,7 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
     e_inf_3   = zeros(1, nSeg);
     cansysjump = zeros(1, nSeg);
     
-    %help-function for selection of an element: for the case that segment i
-    %does not exsist, the firt element is used (continous input)
+    % Helper: Select an element from a cell array; if missing, use the first element.
     function out = selectSegment(cellArray, idx)
         if numel(cellArray) >= idx
             out = cellArray{idx};
@@ -71,62 +57,79 @@ function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateSt
         end
     end
 
-    % loop over the segments 
+    % Loop over each segment
     for i = 1:nSeg
-        % selecting the segments (oder continous values, in case of no array)
+        % Select segments for R, D1, D2
         R_i  = selectSegment(R_cell, i);
         D1_i = selectSegment(D1_cell, i);
         D2_i = selectSegment(D2_cell, i);
         
-        % conversion of inputs to tf-objects if neccessary. 
-        % Ensuring numeric inputs are row vectors
+        % Convert R_i, D1_i, and D2_i to tf objects if necessary (and ensure row vectors)
         if ~isa(R_i, 'tf')
             if isnumeric(R_i)
                 R_i = tf(R_i(:)', 1);
             else
-                error('R_i must be numeric oder or a tf-object.');
+                error('R_i must be numeric or a tf object.');
             end
         end
         if ~isa(D1_i, 'tf')
             if isnumeric(D1_i)
                 D1_i = tf(D1_i(:)', 1);
             else
-                error('D1_i must be numeric oder or a tf-object.');
+                error('D1_i must be numeric or a tf object.');
             end
         end
         if ~isa(D2_i, 'tf')
             if isnumeric(D2_i)
                 D2_i = tf(D2_i(:)', 1);
             else
-                error('D2_i must be numeric oder or a tf-object.');
+                error('D2_i must be numeric or a tf object.');
             end
         end
         
-        % Conversion onto symbolic transfer function
-        [R_num, R_den]   = tfdata(R_i, 'v');
-        [D1_num, D1_den] = tfdata(D1_i, 'v');
-        [D2_num, D2_den] = tfdata(D2_i, 'v');
+        % Compute steady-state values via simulation (using step response)
+        % y_inf_1: final output of T_s * R_i
+        sys_y1 = T_s * R_i;
+        [y_sim, ~] = step(sys_y1, t_final);
+        y_inf_1(i) = y_sim(end);
         
-        R_sys  = poly2sym(R_num, s) / poly2sym(R_den, s);
-        D1_sys = poly2sym(D1_num, s) / poly2sym(D1_den, s);
-        D2_sys = poly2sym(D2_num, s) / poly2sym(D2_den, s);
+        % e_inf_1: final value of S_s * R_i
+        sys_e1 = S_s * R_i;
+        [y_sim, ~] = step(sys_e1, t_final);
+        e_inf_1(i) = y_sim(end);
         
-        % calculating the stationary values for the current segment
-        y_inf_1(i)    = double(limit(s * T_sys * R_sys, s, 0));
-        e_inf_1(i)    = double(limit(s * S_sys * R_sys, s, 0));
-        y_inf_2(i)    = double(limit(s * S_sys * D1_sys, s, 0));
-        e_inf_2(i)    = double(limit(-s * S_sys * D1_sys, s, 0));
-        e_inf_3(i)    = double(limit(s * (S_sys * R_sys - G_sys * S_sys * D2_sys), s, 0));
-        cansysjump(i) = double(limit(s * T_sys * R_sys, s, inf));
+        % y_inf_2: final value of S_s * D1_i
+        sys_y2 = S_s * D1_i;
+        [y_sim, ~] = step(sys_y2, t_final);
+        y_inf_2(i) = y_sim(end);
+        
+        % e_inf_2: final value of -S_s * D1_i
+        sys_e2 = -S_s * D1_i;
+        [y_sim, ~] = step(sys_e2, t_final);
+        e_inf_2(i) = y_sim(end);
+        
+        % e_inf_3: final value of S_s * R_i - G_s * S_s * D2_i
+        sys_e3 = S_s * R_i - G_s * S_s * D2_i;
+        [y_sim, ~] = step(sys_e3, t_final);
+        e_inf_3(i) = y_sim(end);
+        
+        % Calculate jumpability as the high-frequency gain of T_s*R_i
+        try
+            hf = 1e6;
+            TR_val = evalfr(sys_y1, 1i*hf);
+            cansysjump(i) = abs(TR_val * hf);
+        catch
+            cansysjump(i) = NaN;
+        end
     end
-
-    % For the case of only 1 segment, scalar values are returned
+    
+    % If only one segment exists, return scalar values
     if nSeg == 1
-        y_inf_1    = y_inf_1(1);
-        e_inf_1    = e_inf_1(1);
-        y_inf_2    = y_inf_2(1);
-        e_inf_2    = e_inf_2(1);
-        e_inf_3    = e_inf_3(1);
+        y_inf_1   = y_inf_1(1);
+        e_inf_1   = e_inf_1(1);
+        y_inf_2   = y_inf_2(1);
+        e_inf_2   = e_inf_2(1);
+        e_inf_3   = e_inf_3(1);
         cansysjump = cansysjump(1);
     end
 end
