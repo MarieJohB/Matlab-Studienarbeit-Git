@@ -1,135 +1,220 @@
-%---------------------------------------------------------------------
-function [y_inf_1, e_inf_1, y_inf_2, e_inf_2, e_inf_3, cansysjump] = calculateStationaryValues(T_s, S_s, R_s, D1_s, D2_s, G_s)
-    % calculateStationaryValues calculates the steady-state values of the system
-    % via simulation. It supports continuous as well as piecewise inputs for R, D1, and D2.
+function [y_stat_TR, e_stat_SR, y_stat_SD1, e_stat_SD1, e_stat, cansysjump, inputs_constant] = calculateStationaryValues(T, S, r_s, d_1_s, d_2_s, G, r, d_1, d_2, t, input_r, input_d1)
+    % CALCULATESTATIONARYVALUES - Calculate steady-state values for a control system
+    % This function calculates steady-state values primarily using simulation results
     %
-    % If T_s, S_s, or G_s are numeric, they are converted to tf objects (ensuring row vectors).
-    % The steady-state values are obtained by simulating the step response over a fixed time interval
-    % (t_final) and taking the final value.
+    % Inputs:
+    %   T       - Complementary sensitivity function T(s) = L(s)/(1+L(s))
+    %   S       - Sensitivity function S(s) = 1/(1+L(s))
+    %   r_s     - Reference input value (scalar for step input)
+    %   d_1_s   - Output disturbance value (scalar for step input)
+    %   d_2_s   - Input disturbance value (scalar for step input)
+    %   G       - Plant transfer function G(s)
+    %   r       - Reference input function(s)
+    %   d_1     - Output disturbance function(s)
+    %   d_2     - Input disturbance function(s)
+    %   t       - Time vector for simulation
+    %   input_r - Reference input values corresponding to time vector t
+    %   input_d1- Disturbance input values corresponding to time vector t
     %
-    % Additionally, the "jumpability" is estimated by evaluating T(s)*R(s) at a high frequency.
+    % Outputs:
+    %   y_stat_TR     - Steady-state output for reference tracking only
+    %   e_stat_SR     - Steady-state error for reference tracking only
+    %   y_stat_SD1    - Steady-state output for output disturbance only
+    %   e_stat_SD1    - Steady-state error for output disturbance only
+    %   e_stat        - Total steady-state error with all inputs
+    %   cansysjump    - Flag indicating if system is "jumpable" (1 if yes, 0 if no)
+    %   inputs_constant - Structure with flags indicating if inputs are constant
     
-    % Ensure T_s, S_s, and G_s are tf objects
-    if ~isa(T_s, 'tf')
-        T_s = tf(T_s(:)', 1);
+    % Initialize outputs
+    y_stat_TR = NaN;
+    e_stat_SR = NaN;
+    y_stat_SD1 = NaN;
+    e_stat_SD1 = NaN;
+    e_stat = NaN;
+    cansysjump = 0;
+    
+    % Initialize inputs_constant structure
+    inputs_constant = struct('reference', true, 'disturbance1', true, 'disturbance2', true);
+    
+    % Check if inputs are constant
+    if nargin >= 7
+        inputs_constant.reference = isInputConstant(r);
     end
-    if ~isa(S_s, 'tf')
-        S_s = tf(S_s(:)', 1);
+    if nargin >= 8
+        inputs_constant.disturbance1 = isInputConstant(d_1);
     end
-    if ~isa(G_s, 'tf')
-        G_s = tf(G_s(:)', 1);
+    if nargin >= 9
+        inputs_constant.disturbance2 = isInputConstant(d_2);
     end
     
-    % Use a default simulation horizon (adjust as needed)
-    t_final = 100;
-    
-    % Helper: Ensure input is a cell array
-    function cellOut = ensureCell(x)
-        if iscell(x)
-            cellOut = x;
-        else
-            cellOut = {x};
-        end
-    end
-
-    % Wrap R_s, D1_s, and D2_s in cell arrays if needed
-    R_cell  = ensureCell(R_s);
-    D1_cell = ensureCell(D1_s);
-    D2_cell = ensureCell(D2_s);
-    
-    % Determine the number of segments (nSeg) from the maximum length of the cell arrays
-    nSeg = max([numel(R_cell), numel(D1_cell), numel(D2_cell)]);
-    
-    % Preallocate outputs (one value per segment)
-    y_inf_1   = zeros(1, nSeg);
-    e_inf_1   = zeros(1, nSeg);
-    y_inf_2   = zeros(1, nSeg);
-    e_inf_2   = zeros(1, nSeg);
-    e_inf_3   = zeros(1, nSeg);
-    cansysjump = zeros(1, nSeg);
-    
-    % Helper: Select an element from a cell array; if missing, use the first element.
-    function out = selectSegment(cellArray, idx)
-        if numel(cellArray) >= idx
-            out = cellArray{idx};
-        else
-            out = cellArray{1};
-        end
-    end
-
-    % Loop over each segment
-    for i = 1:nSeg
-        % Select segments for R, D1, D2
-        R_i  = selectSegment(R_cell, i);
-        D1_i = selectSegment(D1_cell, i);
-        D2_i = selectSegment(D2_cell, i);
-        
-        % Convert R_i, D1_i, and D2_i to tf objects if necessary (and ensure row vectors)
-        if ~isa(R_i, 'tf')
-            if isnumeric(R_i)
-                R_i = tf(R_i(:)', 1);
-            else
-                error('R_i must be numeric or a tf object.');
-            end
-        end
-        if ~isa(D1_i, 'tf')
-            if isnumeric(D1_i)
-                D1_i = tf(D1_i(:)', 1);
-            else
-                error('D1_i must be numeric or a tf object.');
-            end
-        end
-        if ~isa(D2_i, 'tf')
-            if isnumeric(D2_i)
-                D2_i = tf(D2_i(:)', 1);
-            else
-                error('D2_i must be numeric or a tf object.');
-            end
-        end
-        
-        % Compute steady-state values via simulation (using step response)
-        % y_inf_1: final output of T_s * R_i
-        sys_y1 = T_s * R_i;
-        [y_sim, ~] = step(sys_y1, t_final);
-        y_inf_1(i) = y_sim(end);
-        
-        % e_inf_1: final value of S_s * R_i
-        sys_e1 = S_s * R_i;
-        [y_sim, ~] = step(sys_e1, t_final);
-        e_inf_1(i) = y_sim(end);
-        
-        % y_inf_2: final value of S_s * D1_i
-        sys_y2 = S_s * D1_i;
-        [y_sim, ~] = step(sys_y2, t_final);
-        y_inf_2(i) = y_sim(end);
-        
-        % e_inf_2: final value of -S_s * D1_i
-        sys_e2 = -S_s * D1_i;
-        [y_sim, ~] = step(sys_e2, t_final);
-        e_inf_2(i) = y_sim(end);
-        
-        % e_inf_3: final value of S_s * R_i - G_s * S_s * D2_i
-        sys_e3 = S_s * R_i - G_s * S_s * D2_i;
-        [y_sim, ~] = step(sys_e3, t_final);
-        e_inf_3(i) = y_sim(end);
-        
-        % Calculate jumpability as the high-frequency gain of T_s*R_i
+    % Simulation-based calculation (primary method)
+    if nargin >= 11 && ~isempty(t) && ~isempty(input_r)
+        % Setpoint response via simulation
         try
-            hf = 1e6;
-            TR_val = evalfr(sys_y1, 1i*hf);
-            cansysjump(i) = abs(TR_val * hf);
-        catch
-            cansysjump(i) = NaN;
+            y_TR = lsim(T, input_r, t);
+            e_SR = lsim(S, input_r, t);
+            
+            if ~isempty(y_TR) && length(y_TR) > 10  % Ensure enough points for reliable estimate
+                % Use the last 10% of simulation points for more reliable steady-state value
+                endpart = max(1, round(0.9*length(y_TR)));
+                y_stat_TR = mean(y_TR(endpart:end));
+                e_stat_SR = mean(e_SR(endpart:end));
+                
+                disp(['Simulation-based calculation - Output: ', num2str(y_stat_TR), ', Error: ', num2str(e_stat_SR)]);
+            end
+        catch ME
+            disp(['Simulation error for reference tracking: ', ME.message]);
         end
     end
     
-    % If only one segment exists, return scalar values
-    if nSeg == 1
-        y_inf_1   = y_inf_1(1);
-        e_inf_1   = e_inf_1(1);
-        y_inf_2   = y_inf_2(1);
-        e_inf_2   = e_inf_2(1);
-        e_inf_3   = e_inf_3(1);
-        cansysjump = cansysjump(1);
+    % Disturbance response via simulation
+    if nargin >= 12 && ~isempty(t) && ~isempty(input_d1)
+        try
+            y_SD1 = lsim(-S, input_d1, t);
+            e_SD1 = lsim(S, input_d1, t);
+            
+            if ~isempty(y_SD1) && length(y_SD1) > 10
+                % Use the last 10% of simulation points for more reliable steady-state value
+                endpart = max(1, round(0.9*length(y_SD1)));
+                y_stat_SD1 = mean(y_SD1(endpart:end));
+                e_stat_SD1 = mean(e_SD1(endpart:end));
+                
+                disp(['Simulation-based calculation - Disturbance: ', num2str(y_stat_SD1), ', Error: ', num2str(e_stat_SD1)]);
+            end
+        catch ME
+            disp(['Simulation error for disturbance response: ', ME.message]);
+        end
+    end
+    
+    % If simulation didn't provide values, try analytical methods as fallback
+    if isnan(y_stat_TR) || isnan(e_stat_SR)
+        disp('Simulation-based calculation failed. Using analytical fallback...');
+        
+        % For reference tracking only (analytical fallback)
+        if isscalar(r_s) && inputs_constant.reference && ~isempty(T) && ~isnan(T)
+            try
+                % Method 1: DC gain calculation
+                [num_T, den_T] = tfdata(T, 'v');
+                if den_T(end) ~= 0  % No pole at s=0
+                    % Direct DC gain calculation
+                    dc_gain_T = num_T(end) / den_T(end);
+                    y_stat_TR = dc_gain_T * r_s;
+                    
+                    [num_S, den_S] = tfdata(S, 'v');
+                    if den_S(end) ~= 0  % No pole at s=0
+                        dc_gain_S = num_S(end) / den_S(end);
+                        e_stat_SR = dc_gain_S * r_s;
+                    else
+                        % Integrator in the loop
+                        e_stat_SR = 0;
+                    end
+                else
+                    % Method 2: Using small s-value
+                    s_small = 1e-9;
+                    y_stat_TR = evalfr(T, s_small) * r_s;
+                    e_stat_SR = evalfr(S, s_small) * r_s;
+                end
+                
+                disp(['Analytical calculation - Output: ', num2str(y_stat_TR), ', Error: ', num2str(e_stat_SR)]);
+            catch ME
+                disp(['Analytical calculation error: ', ME.message]);
+            end
+        end
+        
+        % For output disturbance only (analytical fallback)
+        if isnan(y_stat_SD1) || isnan(e_stat_SD1)
+            if isscalar(d_1_s) && inputs_constant.disturbance1 && ~isempty(S) && ~isnan(S)
+                try
+                    % Method 1: DC gain calculation
+                    [num_S, den_S] = tfdata(S, 'v');
+                    if den_S(end) ~= 0  % No pole at s=0
+                        dc_gain_S = num_S(end) / den_S(end);
+                        y_stat_SD1 = -dc_gain_S * d_1_s;
+                        e_stat_SD1 = dc_gain_S * d_1_s;
+                    else
+                        % Method 2: Using small s-value
+                        s_small = 1e-9;
+                        y_stat_SD1 = -evalfr(S, s_small) * d_1_s;
+                        e_stat_SD1 = evalfr(S, s_small) * d_1_s;
+                    end
+                    
+                    disp(['Analytical calculation - Disturbance: ', num2str(y_stat_SD1), ', Error: ', num2str(e_stat_SD1)]);
+                catch ME
+                    disp(['Analytical calculation error: ', ME.message]);
+                end
+            end
+        end
+    end
+    
+    % Calculate total steady-state error
+    if ~isnan(e_stat_SR) && ~isnan(e_stat_SD1)
+        e_stat = e_stat_SR + e_stat_SD1;
+    elseif ~isnan(e_stat_SR)
+        e_stat = e_stat_SR;
+    elseif ~isnan(e_stat_SD1)
+        e_stat = e_stat_SD1;
+    end
+    
+    % Check if system is "jumpable" (zero steady-state error for step input)
+    % First check based on simulation results
+    if ~isnan(e_stat_SR) && abs(e_stat_SR) < 1e-3
+        cansysjump = 1;  % System is jumpable based on small error
+    else
+        % Check for integrator in the loop
+        try
+            % Extract open-loop transfer function
+            [num_S, den_S] = tfdata(S, 'v');
+            if any(abs(den_S) < 1e-10)
+                cansysjump = 1;  % System has pole at origin (integrator)
+            else
+                % Use a frequency response approach
+                s_small = 1e-9;
+                mag_S_0 = abs(evalfr(S, s_small));
+                if mag_S_0 < 1e-3
+                    cansysjump = 1;  % Very small sensitivity at DC indicates integrator
+                else
+                    cansysjump = 0;  % No integrator detected
+                end
+            end
+        catch
+            % Default to checking simulation error
+            cansysjump = (~isnan(e_stat_SR) && abs(e_stat_SR) < 1e-3);
+        end
+    end
+end
+
+function isConstant = isInputConstant(input)
+    % Check if the input is constant (scalar, empty, or contains constant function)
+    isConstant = true;
+    
+    % If it's a scalar, it's constant
+    if isscalar(input)
+        return;
+    end
+    
+    % If it's empty, consider it constant
+    if isempty(input)
+        return;
+    end
+    
+    % If it's a cell array (piecewise function), check each piece
+    if iscell(input)
+        for i = 1:length(input)
+            if isa(input{i}, 'function_handle')
+                % Check if function contains 't' in its expression
+                func_str = func2str(input{i});
+                if contains(func_str, 't') && ~contains(func_str, '0*t')
+                    isConstant = false;
+                    return;
+                end
+            end
+        end
+    elseif isa(input, 'function_handle')
+        % For a single function handle, check if it contains 't'
+        func_str = func2str(input);
+        if contains(func_str, 't') && ~contains(func_str, '0*t')
+            isConstant = false;
+            return;
+        end
     end
 end

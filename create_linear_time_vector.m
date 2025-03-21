@@ -1,46 +1,53 @@
 function [t] = create_linear_time_vector(num_sections)
-%create a linear time vector t
-% with the input elementes: vector with start times, vector with end times
-% and vector with time steps 
+% CREATE_LINEAR_TIME_VECTOR - Creates a linear time vector based on time section parameters
+% Takes the number of sections from get_target_value_version2 and calls get_time_vector
+% to get the time parameters for each section, then creates a linear time vector.
+%
+% Parameters:
+%   num_sections - Number of time sections
+% Returns:
+%   t - Linear time vector for all sections
 
-% call function to get time sections
-[start_time, end_time, time_steps] = get_time_vector(num_sections);
+% Initialize time vector
+t = [];
 
-
-
-min_start_time = min(start_time);
-max_end_time = max(end_time);
-
-% check whether the target value was defined piecewise or continuous
-num_sections = length(end_time);
-
-
-if num_sections == 1 % target value is continuous
-        % Define the time vector
-        num_steps = round((max_end_time - min_start_time) / min(time_steps)); % calculate integer number of steps
-        t = linspace(start_time, end_time, num_steps + 1)'; % create time vector with specified values, transpose to column vector
-
-
-    elseif num_sections > 1 % target value is defined piecewise
-        % Initialize the time vector and target array
-        t = [];
-        
-        
-        for i = 1:num_sections
-            % useing min(time_steps) for all because when using lsim: time has to
-            % be spaced venly
-            num_steps = round((end_time(i) - start_time(i)) / min(time_steps)); % calculate integer number of steps
-            t_section = linspace(start_time(i), end_time(i), num_steps + 1)'; % create equal intervals for each section with time_steps(i)
-            
-            % Avoid duplicate values at the transition points
-            % neccessary because end_time(1) = start_time(2) and so on 
-            if i > 1
-                t_section = t_section(2:end); % remove the first element to avoid duplicate
-            end
-
-            t = [t; t_section]; % concatenate as column vector
-            % and transpond t so its applicable for lsim
-        end
+% Check if num_sections is valid
+if isempty(num_sections)
+    disp('Operation cancelled: No sections defined.');
+    return;
 end
 
+% Get time parameters from get_time_vector
+[start_time, end_time, time_steps] = get_time_vector(num_sections);
+
+% Check if time parameters were returned
+if isempty(start_time) || isempty(end_time) || isempty(time_steps)
+    disp('Operation cancelled: Time parameters not provided.');
+    return;
+end
+
+% Create time vector for each section
+for i = 1:num_sections
+    % Calculate number of points in this section
+    num_points = round((end_time(i) - start_time(i)) / time_steps(i)) + 1;
+    
+    % Create time vector for this section
+    section_t = linspace(start_time(i), end_time(i), num_points);
+    
+    % If this is not the first section, remove the first point to avoid duplication
+    if i > 1 && ~isempty(t) && ~isempty(section_t)
+        section_t = section_t(2:end);
+    end
+    
+    % Append to overall time vector
+    t = [t, section_t];
+end
+
+% Display time vector information (only if we have a valid time vector)
+if ~isempty(t)
+    disp(['Created time vector with ', num2str(length(t)), ' points from ', ...
+        num2str(t(1)), ' to ', num2str(t(end)), ' across ', num2str(num_sections), ' section(s).']);
+else
+    disp('Warning: Created an empty time vector.');
+end
 end

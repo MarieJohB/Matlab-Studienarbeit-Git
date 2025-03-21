@@ -1,8 +1,7 @@
 function [values_vector] = generate_Function_Values_Version2(function_vector)
-    % Creates values of a time dependent function 
+    % GENERATE_FUNCTION_VALUES_VERSION2 - Creates values of a time dependent function
     % Input can be a function that was defined continuous or piecewise
-    % Output: vector with values that can be plotted with corresponding time
-    % vector t 
+    % Output: vector with values that can be plotted with corresponding time vector t
     % Input target_values -> Output: values of r(t)
     % or input is disturbance -> output: values of d(t)
 
@@ -11,17 +10,26 @@ function [values_vector] = generate_Function_Values_Version2(function_vector)
 
     % Call function to get the time vector
     [t] = create_linear_time_vector(num_sections);
+    
+    % Check if time vector creation was successful
+    if isempty(t)
+        values_vector = [];
+        disp('Time vector creation failed. Operation cancelled.');
+        return;
+    end
 
     % Initialize the values vector
     values_vector = zeros(size(t));
 
-    % Call function to get time sections
+    % Call function to get time sections (using the already created time vector parameters)
     [start_time, end_time, time_steps] = get_time_vector(num_sections);
-
-    % Validate the time sections
-   % if length(start_time) ~= num_sections || length(end_time) ~= num_sections || length(time_steps) ~= num_sections
-    %    error('The lengths of start_time, end_time, and time_steps must match num_sections.');
-    %end
+    
+    % Check if time parameters were returned
+    if isempty(start_time) || isempty(end_time) || isempty(time_steps)
+        values_vector = [];
+        disp('Failed to get time parameters. Operation cancelled.');
+        return;
+    end
 
     if num_sections == 1 % Function is continuous
         u = function_vector;
