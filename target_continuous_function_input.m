@@ -16,30 +16,29 @@ appColors = struct(...
     'text', [0.2 0.2 0.2], ...             % Dark text
     'lightText', [1 1 1]);                 % White text for dark backgrounds
 
-% Create UI figure with enhanced styling
-cont_fig = uifigure('Name', 'Reference Signal Input', 'Position', [400, 200, 600, 550]);
+% Create UI figure with enhanced styling - INCREASED SIZE
+cont_fig = uifigure('Name', 'Reference Signal Input', 'Position', [400, 200, 700, 600]);
 cont_fig.Color = appColors.background;
 
 % Add title panel with enhanced styling
-titlePanel = uipanel(cont_fig, 'Position', [10 500 580 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+titlePanel = uipanel(cont_fig, 'Position', [10 550 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
 titleLabel = uilabel(titlePanel, 'Text', 'Continuous Function Input (r(t))', ...
-    'Position', [0 0 580 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Position', [0 0 680 40], 'FontSize', 16, 'FontWeight', 'bold', ...
     'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
 
-% Add plot area in a panel - MAKE THIS BIGGER
+% Add plot area in a panel - INCREASED SIZE
 previewPanel = uipanel(cont_fig, 'Title', 'Function Preview', ...
-    'Position', [10 240 580 250], 'TitlePosition', 'centertop', ...
+    'Position', [10 240 680 300], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-ax = uiaxes(previewPanel, 'Position', [20, 20, 540, 200]);
+ax = uiaxes(previewPanel, 'Position', [20, 20, 640, 250]);
 xlabel(ax, 'Time (s)');
-ylabel(ax, 'r(t)');
-% No title
+% No y-label as requested
 grid(ax, 'on');
 
 % Time parameters panel
 timePanel = uipanel(cont_fig, 'Title', 'Time Parameters', ...
-    'Position', [10 160 580 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 160 680 70], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 % Time vector inputs with improved layout
@@ -54,19 +53,19 @@ stepField = uieditfield(timePanel, 'numeric', 'Position', [480, 20, 80, 22], 'Va
 
 % Function input panel
 functionPanel = uipanel(cont_fig, 'Title', 'Function Definition', ...
-    'Position', [10 90 580 60], 'TitlePosition', 'centertop', ...
+    'Position', [10 90 680 60], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 uilabel(functionPanel, 'Text', 'r(t) =', 'Position', [20, 15, 50, 22], 'FontSize', 12, 'FontWeight', 'bold');
-funcField = uieditfield(functionPanel, 'text', 'Position', [70, 15, 490, 22], 'Value', '', 'FontSize', 12);
+funcField = uieditfield(functionPanel, 'text', 'Position', [70, 15, 590, 22], 'Value', '', 'FontSize', 12);
 
-% Button panel - now styled as an actual panel with a title
+% Button panel - INCREASED SIZE
 buttonPanel = uipanel(cont_fig, 'Title', 'Actions', ...
-    'Position', [10 10 580 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 10 680 70], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 % Center buttons in panel
-panelCenter = 580/2;
+panelCenter = 680/2;
 buttonWidth = 100;
 spacing = 20;
 totalWidth = 3*buttonWidth + 2*spacing;
@@ -96,7 +95,7 @@ cancelButton = uibutton(buttonPanel, 'push', 'Position', [startX + 2*(buttonWidt
     'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) target_cancel_input(cont_fig));
 
-% Help button centered under Confirm button (renamed from Function Help to Help)
+% Help button centered under Confirm button
 helpBtn = uibutton(buttonPanel, 'push', 'Text', 'Help', ...
     'Position', [startX + buttonWidth + spacing, 5, buttonWidth, 18], ...
     'BackgroundColor', appColors.buttonPrimary, ...

@@ -45,7 +45,7 @@ try
     cla(ax);
     plot(ax, t, y);
     xlabel(ax, 'Time (s)');
-    ylabel(ax, disturbance_label);
+    % No y-label as requested
     title(ax, ['Function: ', funcStr]);
     grid(ax, 'on');
 catch ME

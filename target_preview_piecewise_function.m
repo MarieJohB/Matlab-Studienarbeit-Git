@@ -61,7 +61,7 @@ try
     legend(ax, 'Location', 'best');
     hold(ax, 'off');
     xlabel(ax, 'Time (s)');
-    ylabel(ax, 'r(t)');
+    % No y-label as requested
     title(ax, 'Piecewise Function Preview');
     grid(ax, 'on');
 catch ME
