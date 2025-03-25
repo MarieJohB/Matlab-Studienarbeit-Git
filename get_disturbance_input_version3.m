@@ -1,6 +1,7 @@
 function [disturbance, num_sections, start_time, end_time] = get_disturbance_input_version3(disturbance_label)
-% GET_DISTURBANCE_INPUT_VERSION3 - Get disturbance value with enhanced UI
-% Similar to get_target_value_version2 but for disturbance inputs
+% GET_DISTURBANCE_INPUT_VERSION3 - Enhanced UI for getting disturbance input
+% This function creates a main selection dialog with improved styling where users
+% can choose between continuous or piecewise functions for disturbances.
 %
 % Parameters:
 %   disturbance_label - String label for the disturbance (e.g., 'd_1' or 'd_2')
@@ -11,14 +12,33 @@ function [disturbance, num_sections, start_time, end_time] = get_disturbance_inp
 %   start_time: Vector of section start times
 %   end_time: Vector of section end times
 
+% Define unified color scheme
+appColors = struct(...
+    'background', [0.95 0.95 0.97], ...    % Light gray background
+    'panelHeader', [0.2 0.4 0.7], ...      % Blue panel header
+    'panelBg', [0.95 0.95 0.97], ...       % Light panel background
+    'buttonPrimary', [0.3 0.6 0.9], ...    % Blue buttons
+    'buttonConfirm', [0.3 0.8 0.3], ...    % Green confirm button
+    'buttonCancel', [0.8 0.3 0.3], ...     % Red cancel button
+    'buttonHelp', [0.5 0.5 0.5], ...       % Gray help button
+    'text', [0.2 0.2 0.2], ...             % Dark text
+    'lightText', [1 1 1]);                 % White text for dark backgrounds
+
 % Initialize return values
 disturbance = [];
 num_sections = [];
 start_time = [];
 end_time = [];
 
-% Create a figure for user interaction
-selection_fig = uifigure('Name', ['Select ' disturbance_label ' Function Type'], 'Position', [500, 500, 300, 150]);
+% Create a selection figure with improved styling
+selection_fig = uifigure('Name', [disturbance_label ' Function Type'], 'Position', [500, 300, 400, 300]);
+selection_fig.Color = appColors.background;
+
+% Add title panel with improved styling
+titlePanel = uipanel(selection_fig, 'Position', [10 250 380 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+titleLabel = uilabel(titlePanel, 'Text', ['Select ' disturbance_label ' Function Type'], ...
+    'Position', [0 0 380 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+    'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
 
 % Set default values in case window is closed
 setappdata(selection_fig, 'disturbance', []);
@@ -27,14 +47,40 @@ setappdata(selection_fig, 'start_time', []);
 setappdata(selection_fig, 'end_time', []);
 setappdata(selection_fig, 'time_steps', []);
 
-% Add buttons for continuous and piecewise functions
-uibutton(selection_fig, 'Position', [50, 80, 200, 50], 'Text', 'Continuous Function', ...
+% Add instruction text
+uilabel(selection_fig, 'Text', ['Choose the function type for disturbance ' disturbance_label '(t):'], ...
+    'Position', [20 200 360 30], 'FontSize', 12, 'HorizontalAlignment', 'center');
+
+% Add buttons for continuous and piecewise functions with enhanced styling
+contBtn = uibutton(selection_fig, 'push', 'Position', [100, 140, 200, 50], ...
+    'Text', 'Continuous Function', ...
+    'FontSize', 12, 'FontWeight', 'bold', ...
+    'BackgroundColor', appColors.buttonPrimary, ...
+    'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) disturbance_continuous_function_input(selection_fig, disturbance_label));
-uibutton(selection_fig, 'Position', [50, 20, 200, 50], 'Text', 'Define Function in Sections', ...
+
+pieceBtn = uibutton(selection_fig, 'push', 'Position', [100, 80, 200, 50], ...
+    'Text', 'Piecewise Function', ...
+    'FontSize', 12, 'FontWeight', 'bold', ...
+    'BackgroundColor', appColors.buttonPrimary, ...
+    'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) disturbance_piecewise_function_input(selection_fig, disturbance_label));
 
+cancelBtn = uibutton(selection_fig, 'push', 'Position', [150, 20, 100, 30], ...
+    'Text', 'Cancel', ...
+    'FontSize', 12, ...
+    'BackgroundColor', appColors.buttonCancel, ...
+    'FontColor', appColors.lightText, ...
+    'ButtonPushedFcn', @(btn, event) closeSelectionFig());
+
 % Handle window close event
-selection_fig.CloseRequestFcn = @(src, event) disturbance_selection_figure_closed(src);
+selection_fig.CloseRequestFcn = @(src, event) closeSelectionFig();
+
+% Function to close the selection figure
+function closeSelectionFig()
+    uiresume(selection_fig);
+    delete(selection_fig);
+end
 
 % Wait for user input
 uiwait(selection_fig);
@@ -48,10 +94,9 @@ if isvalid(selection_fig)
     end_time = getappdata(selection_fig, 'end_time');
     time_steps = getappdata(selection_fig, 'time_steps');
     
-    % If values were successfully obtained from UI, pass them to get_time_vector
+    % If values were successfully obtained from UI, pass them to get_time_vector_disturbance
     if ~isempty(start_time) && ~isempty(end_time) && ~isempty(time_steps) && ~isempty(num_sections)
         % Store the time vector parameters with a unique name for this disturbance
-        % This uses a modified version of get_time_vector that doesn't share persistent variables
         [start_time, end_time, time_steps] = get_time_vector_disturbance(num_sections, start_time, end_time, time_steps, disturbance_label);
     end
     
@@ -59,5 +104,3 @@ if isvalid(selection_fig)
     delete(selection_fig);
 end
 end
-
-% The helper functions are moved to separate files
