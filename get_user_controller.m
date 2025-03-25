@@ -1,36 +1,100 @@
 function K = get_user_controller(G)
-% get_user_controller
-% ---------------------
+% GET_USER_CONTROLLER - Create a controller with a consistent UI experience
 % This function creates a MATLAB app for selecting a controller type and
-% entering its parameters with a live HTML preview. The input dialog layout,
-% including the preview area, labels, input fields and buttons,
-% is exactly modeled after the get_user_transfer_function function.
+% entering its parameters. The UI matches the transfer function UI style
+% with consistent panels, colors, and layout.
 %
-% New: Now includes an "Auto-Tuning" button that creates an optimized controller
-% based on various design methods.
+% Parameters:
+%   G - Optional plant transfer function for auto-tuning
+%
+% Returns:
+%   K - The controller transfer function
 
     % Initialize K to empty to ensure it always has a value
     K = [];
     
-    % Controller selection menu using a uifigure with buttons
-    mainFig = uifigure('Name', 'Controller Selection', 'Position', [100 100 600 400]);
-    uilabel(mainFig, 'Text', 'Select a Controller:', ...
-        'Position', [200 350 200 30], 'HorizontalAlignment', 'center', 'FontSize', 16);
+    % Define UI colors to match transfer function UI
+    appColors = struct(...
+        'background', [0.95 0.95 0.97], ...       % Light gray background
+        'panelHeader', [0.2 0.4 0.7], ...         % Blue panel header
+        'panelBg', [0.95 0.95 0.97], ...          % Light panel background
+        'buttonPrimary', [0.3 0.6 0.9], ...       % Blue buttons
+        'buttonConfirm', [0.3 0.8 0.3], ...       % Green confirm button
+        'buttonCancel', [0.8 0.3 0.3], ...        % Red cancel button
+        'text', [0.2 0.2 0.2], ...                % Dark text
+        'lightText', [1 1 1]);                    % White text for dark backgrounds
     
-    % Create buttons for each controller type
+    % Create main figure with improved styling
+    mainFig = uifigure('Name', 'Controller Selection', 'Position', [100 100 700 500]);
+    mainFig.Color = appColors.background;
+    
+    % Add title panel
+    titlePanel = uipanel(mainFig, 'Position', [10 430 680 60], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+    titleLabel = uilabel(titlePanel, 'Text', 'Controller Selection', ...
+        'Position', [0 0 680 60], 'FontSize', 20, 'FontWeight', 'bold', ...
+        'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
+    
+    % Add controller selection panel
+    controllerPanel = uipanel(mainFig, 'Title', 'Select Controller Type', ...
+        'Position', [10 130 680 290], 'TitlePosition', 'centertop', ...
+        'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
+    
+    % Create buttons for standard controllers in a grid layout
     controllers = {'P','PI','PD','PID','PT1','PIT1','I2','PIDT1','Custom'};
-    btnPositions = [50 250; 170 250; 290 250; 410 250; 50 170; 170 170; 290 170; 410 170; 250 90];
-    for i = 1:numel(controllers)
-        uibutton(mainFig, 'push', 'Text', controllers{i}, ...
-            'Position', [btnPositions(i,1) btnPositions(i,2) 100 40], ...
+    grid_width = 3;
+    grid_height = 3;
+    button_width = 160;
+    button_height = 60;
+    h_spacing = 30;
+    v_spacing = 20;
+    
+    % Calculate total grid width and height
+    total_width = grid_width * button_width + (grid_width - 1) * h_spacing;
+    total_height = grid_height * button_height + (grid_height - 1) * v_spacing;
+    
+    % Calculate starting position to center the grid
+    start_x = (680 - total_width) / 2;
+    start_y = 185;
+    
+    % Create buttons in grid layout
+    for i = 1:length(controllers)
+        row = ceil(i / grid_width);
+        col = mod(i-1, grid_width) + 1;
+        
+        x_pos = start_x + (col-1) * (button_width + h_spacing);
+        y_pos = start_y - (row-1) * (button_height + v_spacing);
+        
+        % Create button with improved styling
+        btn = uibutton(controllerPanel, 'push', 'Text', controllers{i}, ...
+            'Position', [x_pos, y_pos, button_width, button_height], ...
+            'FontSize', 14, 'FontWeight', 'bold', ...
+            'BackgroundColor', appColors.buttonPrimary, ...
+            'FontColor', appColors.lightText, ...
             'ButtonPushedFcn', @(~,~) openInputDialog(controllers{i}));
     end
     
-    % Add the Auto-Tuning button
-    autoTuneBtn = uibutton(mainFig, 'push', 'Text', 'Auto-Tuning', ...
-        'Position', [185 30 230 50], 'FontSize', 14, 'FontWeight', 'bold', ...
-        'BackgroundColor', [0.3 0.6 0.9], 'FontColor', 'white', ...
-        'ButtonPushedFcn', @(~,~) openAutoTuningDialog());
+    % Add auto-tuning button panel
+    autoTunePanel = uipanel(mainFig, 'Position', [10 10 680 110], 'Title', 'Advanced Options', ...
+        'TitlePosition', 'centertop', 'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
+    
+    % Create auto-tuning button
+    if nargin >= 1 && ~isempty(G)
+        autoTuneBtn = uibutton(autoTunePanel, 'push', 'Text', 'Automatic Controller Design', ...
+            'Position', [190, 15, 300, 60], 'FontSize', 16, 'FontWeight', 'bold', ...
+            'BackgroundColor', [0.3 0.6 0.9], 'FontColor', 'white', ...
+            'ButtonPushedFcn', @(~,~) openAutoTuningDialog());
+    else
+        % If G is not provided, show disabled button with explanation
+        autoTuneBtn = uibutton(autoTunePanel, 'push', 'Text', 'Automatic Controller Design', ...
+            'Position', [190, 40, 300, 40], 'FontSize', 14, ...
+            'Enable', 'off', ...
+            'ButtonPushedFcn', @(~,~) openAutoTuningDialog());
+        
+        % Add explanation label
+        uilabel(autoTunePanel, 'Text', 'Define plant model G(s) first to enable auto-tuning', ...
+            'Position', [0, 15, 680, 20], 'FontSize', 12, 'FontColor', [0.7 0.3 0.3], ...
+            'HorizontalAlignment', 'center');
+    end
     
     % Handle figure close request
     mainFig.CloseRequestFcn = @handleCloseRequest;
@@ -48,14 +112,195 @@ function K = get_user_controller(G)
         delete(mainFig);
     end
     
-    % Opens the Auto-Tuning dialog
-    function openAutoTuningDialog()
-        % This function creates an improved auto-tuning dialog for controller design
-        % It provides a more organized UI with clear sections, fixed alignment, tooltips,
-        % and extended methods including H-infinity and LQG
+    % Modal dialog for controller parameter input
+    function openInputDialog(ctrlType)
+        % Determine field labels based on controller type
+        switch ctrlType
+            case 'P'
+                fieldLabels = {'Proportional Gain (Kp):'};
+                defaultVals = {'1'};
+                symbolic = {'Kp'};
+                symbolPreview = 'Kp';
+            case 'PI'
+                fieldLabels = {'Proportional Gain (Kp):', 'Integral Gain (Ki):'};
+                defaultVals = {'1', '0.5'};
+                symbolic = {'Kp', 'Ki'};
+                symbolPreview = 'Kp + Ki/s';
+            case 'PD'
+                fieldLabels = {'Proportional Gain (Kp):', 'Derivative Gain (Kd):'};
+                defaultVals = {'1', '0.1'};
+                symbolic = {'Kp', 'Kd'};
+                symbolPreview = 'Kp + Kd·s';
+            case 'PID'
+                fieldLabels = {'Proportional Gain (Kp):', 'Integral Gain (Ki):', 'Derivative Gain (Kd):'};
+                defaultVals = {'1', '0.5', '0.1'};
+                symbolic = {'Kp', 'Ki', 'Kd'};
+                symbolPreview = 'Kp + Ki/s + Kd·s';
+            case 'PT1'
+                fieldLabels = {'Proportional Gain (Kp):', 'Time Constant (T):'};
+                defaultVals = {'1', '1'};
+                symbolic = {'Kp', 'T'};
+                symbolPreview = 'Kp / (Ts + 1)';
+            case 'PIT1'
+                fieldLabels = {'Proportional Gain (Kp):', 'Integral Gain (Ki):', 'Time Constant (T):'};
+                defaultVals = {'1', '0.5', '1'};
+                symbolic = {'Kp', 'Ki', 'T'};
+                symbolPreview = '(Kp·s + Ki) / (T·s² + s)';
+            case 'I2'
+                fieldLabels = {'Integral Gain (Ki):'};
+                defaultVals = {'1'};
+                symbolic = {'Ki'};
+                symbolPreview = 'Ki / s²';
+            case 'PIDT1'
+                fieldLabels = {'Proportional Gain (Kp):', 'Integral Gain (Ki):', 'Derivative Gain (Kd):', 'Time Constant (T):'};
+                defaultVals = {'1', '0.5', '0.1', '1'};
+                symbolic = {'Kp', 'Ki', 'Kd', 'T'};
+                symbolPreview = '(Kd·s² + Kp·s + Ki) / (T·s² + s)';
+            case 'Custom'
+                fieldLabels = {'Numerator coefficients [b0 b1 ...]:', 'Denominator coefficients [a0 a1 ...]:'};
+                defaultVals = {'1 0', '1 1'};
+                symbolic = {'num', 'den'};
+                symbolPreview = 'numerator / denominator';
+        end
+        numFields = length(fieldLabels);
+        
+        % Create a modal UI figure with styling to match transfer function UI
+        dlg = uifigure('Name', [ctrlType ' Controller Parameters'], ...
+                     'Position', [200 200 600 450], 'WindowStyle', 'modal');
+        dlg.Color = appColors.background;
+        
+        % Title panel
+        titlePnl = uipanel(dlg, 'Position', [10 390 580 50], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+        titleLbl = uilabel(titlePnl, 'Text', [ctrlType ' Controller Configuration'], ...
+            'Position', [0 0 580 50], 'FontSize', 16, 'FontWeight', 'bold', ...
+            'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
+        
+        % Preview panel
+        previewPanel = uipanel(dlg, 'Title', 'Controller Preview', ...
+            'Position', [10 280 580 100], 'TitlePosition', 'centertop', ...
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
+        
+        % Create UIHTML component for the preview with the same styling as transfer function UI
+        previewHTML = uihtml(previewPanel, 'Position', [10 5 560 70], ...
+            'HTMLSource', getSymbolicPreviewHTML(ctrlType, symbolPreview));
+        
+        % Parameters panel - adjust height based on number of fields
+        paramHeight = 40 * numFields + 20;  % Dynamic height based on number of fields
+        paramsPanel = uipanel(dlg, 'Title', 'Controller Parameters', ...
+            'Position', [10 270 - paramHeight, 580, paramHeight], 'TitlePosition', 'centertop', ...
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
+        
+        % Create labels and input fields for controller parameters
+        fields = cell(1, numFields);
+        for j = 1:numFields
+            yPos = paramHeight - (j * 40) - 15;
+            
+            % Create label with symbolic name shown
+            uilabel(paramsPanel, 'Position', [20 yPos 250 30], ...
+                'Text', [fieldLabels{j} ' (' symbolic{j} ')'], ...
+                'FontSize', 12);
+            
+            % Create edit field with default value
+            fields{j} = uieditfield(paramsPanel, 'text', ...
+                'Position', [280 yPos 280 30], ...
+                'Value', defaultVals{j}, 'FontSize', 12);
+        end
+        
+        % Buttons panel with no border
+        btnPanel = uipanel(dlg, 'Position', [10 10 580 70], 'BackgroundColor', appColors.background);
+        
+        % Create buttons with same style as in transfer function UI (no individual borders)
+        previewBtn = uibutton(btnPanel, 'push', 'Text', 'Preview', ...
+            'Position', [120 15 100 40], 'FontSize', 14, ...
+            'BackgroundColor', appColors.buttonPrimary, ...
+            'FontColor', appColors.lightText, ...
+            'ButtonPushedFcn', @(~,~) previewCallbackK());
+        
+        confirmBtn = uibutton(btnPanel, 'push', 'Text', 'Confirm', ...
+            'Position', [240 15 100 40], 'FontSize', 14, ...
+            'BackgroundColor', appColors.buttonConfirm, ...
+            'FontColor', appColors.lightText, ...
+            'ButtonPushedFcn', @(~,~) confirmCallbackK());
+        
+        cancelBtn = uibutton(btnPanel, 'push', 'Text', 'Cancel', ...
+            'Position', [360 15 100 40], 'FontSize', 14, ...
+            'BackgroundColor', appColors.buttonCancel, ...
+            'FontColor', appColors.lightText, ...
+            'ButtonPushedFcn', @(~,~) cancelCallbackK());
+            
+        % Handle figure close request
+        dlg.CloseRequestFcn = @cancelCallbackK;
+        
+        % Callback for Preview: update the HTML preview area
+        function previewCallbackK()
+            % If any input field is empty, show the symbolic preview
+            if any(cellfun(@(x) isempty(x.Value), fields))
+                previewHTML.HTMLSource = getSymbolicPreviewHTML(ctrlType, symbolPreview);
+                return;
+            end
+            % Otherwise, try to compute numeric transfer function preview
+            try
+                Ktemp = computeController(ctrlType, fields);
+                % Extract numerator and denominator from the transfer function (assumed SISO)
+                numCell = Ktemp.Numerator;
+                denCell = Ktemp.Denominator;
+                if isempty(numCell) || isempty(denCell)
+                    previewHTML.HTMLSource = '<html><body style="font-size:16px; text-align:center;">Preview: Invalid input.</body></html>';
+                    return;
+                end
+                numVec = numCell{1};
+                denVec = denCell{1};
+                % Convert polynomial coefficients to HTML-formatted strings without asterisks
+                numHTML = polyToHTMLString(numVec);
+                denHTML = polyToHTMLString(denVec);
+                
+                % Create HTML fraction with exact same styling as transfer function UI
+                formulaHTML = ['<html><head><style>', ...
+                    'body { display: flex; justify-content: center; align-items: center; height: 100%; margin: 0; padding: 0; }', ...
+                    '.fraction { display: inline-block; vertical-align: middle; margin: 0 auto; text-align: center; }', ...
+                    '.fraction .num { border-bottom: 1px solid black; padding: 5px 15px; font-size: 16px; }', ...
+                    '.fraction .den { padding: 5px 15px; font-size: 16px; }', ...
+                    '</style></head><body>', ...
+                    '<div class="fraction">', ...
+                    '<div class="num">', numHTML, '</div>', ...
+                    '<div class="den">', denHTML, '</div>', ...
+                    '</div>', ...
+                    '</body></html>'];
+                
+                previewHTML.HTMLSource = formulaHTML;
+            catch ME
+                disp(['Preview error: ' ME.message]);
+                previewHTML.HTMLSource = '<html><body style="font-size:16px; text-align:center; color:red;">Preview: Invalid input. ' + ME.message + '</body></html>';
+            end
+        end
+        
+        % Callback for Confirm: validate input, create transfer function and close dialog & main figure
+        function confirmCallbackK()
+            try
+                K = computeController(ctrlType, fields);
+                % Resume and close safely
+                uiresume(dlg);
+                delete(dlg);
+                uiresume(mainFig);
+                delete(mainFig);
+            catch ME
+                disp(['Error confirming controller: ' ME.message]);
+                uialert(dlg, ['Invalid input: ' ME.message], 'Error');
+            end
+        end
+        
+        % Callback for Cancel: close the dialog and return to the controller selection window
+        function cancelCallbackK()
+            uiresume(dlg);
+            delete(dlg);
+        end
+        
+        uiwait(dlg);
+    end
 
+    % Opens the Auto-Tuning dialog with matching styling
+    function openAutoTuningDialog()
         % Use the G plant model passed as parameter to the outer function
-        % We're simply checking if G is empty - not checking nargin which would be wrong in this context
         if isempty(G)
              uialert(mainFig, 'Please define plant model G(s) first.', 'Plant Missing');
              return;
@@ -67,13 +312,13 @@ function K = get_user_controller(G)
         
         % Create a figure with improved styling
         autoTuneFig = uifigure('Name', 'Automatic Controller Design', 'Position', [300 150 700 700]);
-        autoTuneFig.Color = [0.95 0.95 0.97]; % Light gray-blue background
+        autoTuneFig.Color = appColors.background;
         
         % Add a professional-looking title and plant info
-        titlePanel = uipanel(autoTuneFig, 'Position', [10 630 680 60], 'BackgroundColor', [0.2 0.4 0.7]);
+        titlePanel = uipanel(autoTuneFig, 'Position', [10 630 680 60], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
         titleLabel = uilabel(titlePanel, 'Text', 'Controller Auto-Tuning', ...
-            'Position', [20 15 640 30], 'FontSize', 20, 'FontWeight', 'bold', ...
-            'FontColor', 'white', 'HorizontalAlignment', 'center');
+            'Position', [0 0 680 60], 'FontSize', 20, 'FontWeight', 'bold', ...
+            'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
         
         % Plant info display with improved styling
         if isStable
@@ -86,25 +331,25 @@ function K = get_user_controller(G)
         
         plantInfoText = sprintf('Plant G(s): %s, Order %d', stabilityText, plantOrder);
         plantInfoLabel = uilabel(autoTuneFig, 'Text', plantInfoText, ...
-            'Position', [20 600 660 20], 'FontWeight', 'bold', ...
-            'FontColor', stabilityColor);
+            'Position', [10 600 680 20], 'FontWeight', 'bold', ...
+            'FontColor', stabilityColor, 'HorizontalAlignment', 'center');
         
         % Create main panels with improved styling
         designPanel = uipanel(autoTuneFig, 'Title', 'Design Methods', ...
             'Position', [10 420 680 170], 'TitlePosition', 'centertop', ...
-            'FontWeight', 'bold', 'FontSize', 14);
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         controllerPanel = uipanel(autoTuneFig, 'Title', 'Controller Configuration', ...
             'Position', [10 330 680 80], 'TitlePosition', 'centertop', ...
-            'FontWeight', 'bold', 'FontSize', 14);
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         performancePanel = uipanel(autoTuneFig, 'Title', 'Performance Requirements', ...
             'Position', [10 190 680 130], 'TitlePosition', 'centertop', ...
-            'FontWeight', 'bold', 'FontSize', 14);
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         resultsPanel = uipanel(autoTuneFig, 'Title', 'Results', ...
             'Position', [10 10 680 170], 'TitlePosition', 'centertop', ...
-            'FontWeight', 'bold', 'FontSize', 14);
+            'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         % Methods selection with better layout (2 columns, no duplicates)
         methods = {
@@ -130,7 +375,7 @@ function K = get_user_controller(G)
             row = ceil(i / 2);
             col = mod(i-1, 2);
             
-            % Calculate position
+            % Calculate position - x offset for second column
             x = 20 + col * 340;
             y = 140 - row * 25;
             
@@ -152,7 +397,8 @@ function K = get_user_controller(G)
         
         % Add a "What are these methods?" button with information tooltip
         infoBtn = uibutton(designPanel, 'Text', 'Method Information', ...
-            'Position', [550 20 110 30], 'ButtonPushedFcn', @showMethodInfo);
+            'Position', [555 110 115 30], 'ButtonPushedFcn', @showMethodInfo, ...
+            'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText);
         
         % Controller structure dropdown with improved styling
         structureLabel = uilabel(controllerPanel, 'Text', 'Controller Structure:', ...
@@ -217,7 +463,8 @@ function K = get_user_controller(G)
         
         % Add a "What's a good score?" button with information
         scoreInfoBtn = uibutton(performancePanel, 'Text', 'Score Info', ...
-            'Position', [580 20 80 22], 'ButtonPushedFcn', @showScoreInfo);
+            'Position', [580 20 80 22], 'ButtonPushedFcn', @showScoreInfo, ...
+            'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText);
         
         % Results area with improved styling
         resultArea = uitextarea(resultsPanel, ...
@@ -225,20 +472,22 @@ function K = get_user_controller(G)
             'Value', 'Auto-tuning results will be displayed here.', ...
             'Editable', 'off', 'FontSize', 12);
         
-        % Buttons with improved styling and layout
-        startBtn = uibutton(resultsPanel, 'push', 'Text', 'Start Auto-Tuning', ...
-            'Position', [120 20 160 30], 'FontSize', 14, 'FontWeight', 'bold', ...
-            'BackgroundColor', [0.3 0.8 0.3], 'FontColor', 'white', ...
+        % Buttons with improved styling and layout in a panel with no border
+        buttonPanel = uipanel(resultsPanel, 'Position', [20 10 640 40], 'BorderType', 'none', 'BackgroundColor', appColors.panelBg);
+        
+        startBtn = uibutton(buttonPanel, 'push', 'Text', 'Start Auto-Tuning', ...
+            'Position', [100 5 160 30], 'FontSize', 14, 'FontWeight', 'bold', ...
+            'BackgroundColor', appColors.buttonConfirm, 'FontColor', appColors.lightText, ...
             'ButtonPushedFcn', @startAutoTuning);
         
-        applyBtn = uibutton(resultsPanel, 'push', 'Text', 'Apply', ...
-            'Position', [300 20 120 30], 'FontSize', 14, ...
-            'Enable', 'off', 'BackgroundColor', [0.3 0.5 0.8], 'FontColor', 'white', ...
+        applyBtn = uibutton(buttonPanel, 'push', 'Text', 'Apply', ...
+            'Position', [280 5 120 30], 'FontSize', 14, ...
+            'Enable', 'off', 'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText, ...
             'ButtonPushedFcn', @confirmController);
         
-        cancelBtn = uibutton(resultsPanel, 'push', 'Text', 'Cancel', ...
-            'Position', [440 20 120 30], 'FontSize', 14, ...
-            'BackgroundColor', [0.8 0.3 0.3], 'FontColor', 'white', ...
+        cancelBtn = uibutton(buttonPanel, 'push', 'Text', 'Cancel', ...
+            'Position', [420 5 120 30], 'FontSize', 14, ...
+            'BackgroundColor', appColors.buttonCancel, 'FontColor', appColors.lightText, ...
             'ButtonPushedFcn', @cancelDialog);
         
         % Handle figure close request
@@ -255,8 +504,15 @@ function K = get_user_controller(G)
         % Show method information
         function showMethodInfo(~, ~)
             methodInfoFig = uifigure('Name', 'Controller Design Methods', 'Position', [350 250 600 500]);
+            methodInfoFig.Color = appColors.background;
             
-            methodInfo = uitextarea(methodInfoFig, 'Position', [20 60 560 420], 'Editable', 'off');
+            % Title panel
+            methodTitlePanel = uipanel(methodInfoFig, 'Position', [10 450 580 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+            methodTitleLabel = uilabel(methodTitlePanel, 'Text', 'Controller Design Methods', ...
+                'Position', [0 0 580 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+                'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
+            
+            methodInfo = uitextarea(methodInfoFig, 'Position', [20 60 560 380], 'Editable', 'off');
             methodInfo.Value = {
                 'Controller Design Methods:', 
                 '-------------------------',
@@ -295,14 +551,22 @@ function K = get_user_controller(G)
             
             closeBtn = uibutton(methodInfoFig, 'push', 'Text', 'Close', ...
                 'Position', [250 20 100 30], 'FontSize', 12, ...
+                'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText, ...
                 'ButtonPushedFcn', @(~,~) close(methodInfoFig));
         end
         
         % Show score information
         function showScoreInfo(~, ~)
             scoreInfoFig = uifigure('Name', 'Controller Scoring System', 'Position', [350 300 500 400]);
+            scoreInfoFig.Color = appColors.background;
             
-            scoreInfo = uitextarea(scoreInfoFig, 'Position', [20 60 460 320], 'Editable', 'off');
+            % Title panel
+            scoreTitlePanel = uipanel(scoreInfoFig, 'Position', [10 350 480 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+            scoreTitleLabel = uilabel(scoreTitlePanel, 'Text', 'Controller Scoring System', ...
+                'Position', [0 0 480 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+                'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
+            
+            scoreInfo = uitextarea(scoreInfoFig, 'Position', [20 60 460 280], 'Editable', 'off');
             scoreInfo.Value = {
                 'Controller Scoring System:', 
                 '-------------------------',
@@ -338,6 +602,7 @@ function K = get_user_controller(G)
             
             closeBtn = uibutton(scoreInfoFig, 'push', 'Text', 'Close', ...
                 'Position', [200 20 100 30], 'FontSize', 12, ...
+                'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText, ...
                 'ButtonPushedFcn', @(~,~) close(scoreInfoFig));
         end
         
@@ -590,138 +855,6 @@ function K = get_user_controller(G)
         end
     end
 
-    % Modal dialog for controller parameter input
-    function openInputDialog(ctrlType)
-        % Determine field labels based on controller type
-        switch ctrlType
-            case 'P'
-                fieldLabels = {'Enter Kp:'};
-            case 'PI'
-                fieldLabels = {'Enter Kp:', 'Enter Ki:'};
-            case 'PD'
-                fieldLabels = {'Enter Kp:', 'Enter Kd:'};
-            case 'PID'
-                fieldLabels = {'Enter Kp:', 'Enter Ki:', 'Enter Kd:'};
-            case 'PT1'
-                fieldLabels = {'Enter Kp:', 'Enter Time Constant T:'};
-            case 'PIT1'
-                fieldLabels = {'Enter Kp:', 'Enter Ki:', 'Enter Time Constant T:'};
-            case 'I2'
-                fieldLabels = {'Enter Ki:'};
-            case 'PIDT1'
-                fieldLabels = {'Enter Kp:', 'Enter Ki:', 'Enter Kd:', 'Enter Time Constant T:'};
-            case 'Custom'
-                fieldLabels = {'Enter numerator coefficients [b0 b1 ...]:', ...
-                               'Enter denominator coefficients [a0 a1 ...]:'};
-        end
-        numFields = numel(fieldLabels);
-        
-        % Adjust figure height based on number of input fields (mimic original layout)
-        if numFields <= 2
-            figHeight = 350;
-        else
-            figHeight = 350 + (numFields - 2)*50;
-        end
-        
-        % Create a modal UI figure similar to get_user_transfer_function
-        dlg = uifigure('Name', [ctrlType ' Controller Input'], ...
-                       'Position', [100 100 500 figHeight], 'WindowStyle', 'modal');
-                   
-        % Create UIHTML component for the preview at the top of the window.
-        % Initially, display the symbolic preview.
-        previewHTML = uihtml(dlg, 'Position', [20 figHeight-70 460 50], ...
-            'HTMLSource', getSymbolicPreviewHTML(ctrlType));
-        
-        % Create labels and input fields for controller parameters
-        fields = cell(1, numFields);
-        for j = 1:numFields
-            yLabel = figHeight - (130 + (j-1)*60);
-            yEdit  = figHeight - (160 + (j-1)*60);
-            uilabel(dlg, 'Position', [20 yLabel 250 22], 'Text', fieldLabels{j});
-            fields{j} = uieditfield(dlg, 'text', 'Position', [20 yEdit 460 22]);
-        end
-        
-        % Create three centered buttons at the bottom (same layout as transfer function input)
-        uibutton(dlg, 'push', 'Text', 'Preview', ...
-            'Position', [80 60 100 30], 'ButtonPushedFcn', @(~,~) previewCallbackK());
-        uibutton(dlg, 'push', 'Text', 'Confirm', ...
-            'Position', [200 60 100 30], 'ButtonPushedFcn', @(~,~) confirmCallbackK());
-        uibutton(dlg, 'push', 'Text', 'Cancel', ...
-            'Position', [320 60 100 30], 'ButtonPushedFcn', @(~,~) cancelCallbackK());
-            
-        % Handle figure close request
-        dlg.CloseRequestFcn = @cancelCallbackK;
-        
-        % Callback for Preview: update the HTML preview area
-        function previewCallbackK()
-            % If any input field is empty, show the symbolic preview
-            if any(cellfun(@(x) isempty(x.Value), fields))
-                previewHTML.HTMLSource = getSymbolicPreviewHTML(ctrlType);
-                return;
-            end
-            % Otherwise, try to compute numeric transfer function preview
-            try
-                Ktemp = computeController(ctrlType, fields);
-                % Extract numerator and denominator from the transfer function (assumed SISO)
-                numCell = Ktemp.Numerator;
-                denCell = Ktemp.Denominator;
-                if isempty(numCell) || isempty(denCell)
-                    previewHTML.HTMLSource = '<html><body style="font-size:16px; text-align:center;">Preview: Invalid input.</body></html>';
-                    return;
-                end
-                numVec = numCell{1};
-                denVec = denCell{1};
-                % Convert polynomial coefficients to HTML-formatted strings without asterisks
-                numHTML = polyToHTMLString(numVec);
-                denHTML = polyToHTMLString(denVec);
-                % Create HTML fraction with "Preview:" label and centered fraction
-                formulaHTML = [...
-                    '<html><head><style>',...
-                        '.container { display: inline-flex; align-items: center; justify-content: center; width: 100%; }',...
-                        '.label { font-size:16px; margin-right:10px; }',...
-                        '.fraction { display:inline-block; text-align:center; }',...
-                        '.fraction .num { display:block; border-bottom:1px solid black; padding-bottom:2px; }',...
-                        '.fraction .den { display:block; padding-top:2px; }',...
-                    '</style></head><body>',...
-                        '<div class="container">',...
-                            '<div class="label">Preview:</div>',...
-                            '<div class="fraction">',...
-                                '<span class="num">', numHTML, '</span>',...
-                                '<span class="den">', denHTML, '</span>',...
-                            '</div>',...
-                        '</div>',...
-                    '</body></html>'];
-                previewHTML.HTMLSource = formulaHTML;
-            catch ME
-                disp(['Preview error: ' ME.message]);
-                previewHTML.HTMLSource = '<html><body style="font-size:16px; text-align:center;">Preview: Invalid input.</body></html>';
-            end
-        end
-        
-        % Callback for Confirm: validate input, create transfer function and close dialog & main figure
-        function confirmCallbackK()
-            try
-                K = computeController(ctrlType, fields);
-                % Resume and close safely
-                uiresume(dlg);
-                delete(dlg);
-                uiresume(mainFig);
-                delete(mainFig);
-            catch ME
-                disp(['Error confirming controller: ' ME.message]);
-                uialert(dlg, 'Invalid input. Please enter valid parameter values.', 'Error');
-            end
-        end
-        
-        % Callback for Cancel: close the dialog and return to the controller selection window
-        function cancelCallbackK()
-            uiresume(dlg);
-            delete(dlg);
-        end
-        
-        uiwait(dlg);
-    end
-
     % Helper function: Computes the controller transfer function based on controller type and inputs
     function Ktemp = computeController(ctrlType, fields)
         switch ctrlType
@@ -735,12 +868,14 @@ function K = get_user_controller(G)
             case 'PD'
                 Kp = convertValue(fields{1}.Value);
                 Kd = convertValue(fields{2}.Value);
-                Ktemp = tf([Kd, Kp], 1);
+                % Apply filter for derivative term (0.1 = default epsilon)
+                Ktemp = tf([Kd, Kp], [0.1*Kd, 1]);
             case 'PID'
                 Kp = convertValue(fields{1}.Value);
                 Ki = convertValue(fields{2}.Value);
                 Kd = convertValue(fields{3}.Value);
-                Ktemp = tf([Kd, Kp, Ki], [1, 0]);
+                % Apply filter for derivative term (0.1 = default epsilon)
+                Ktemp = tf([Kd, Kp, Ki], [0.1*Kd, 1, 0]);
             case 'PT1'
                 Kp = convertValue(fields{1}.Value);
                 T  = convertValue(fields{2}.Value);
@@ -749,7 +884,7 @@ function K = get_user_controller(G)
                 Kp = convertValue(fields{1}.Value);
                 Ki = convertValue(fields{2}.Value);
                 T  = convertValue(fields{3}.Value);
-                Ktemp = tf([Kp*Ki, Kp], [T, 1, 0]);
+                Ktemp = tf([Kp, Ki], [T, 1, 0]);
             case 'I2'
                 Ki = convertValue(fields{1}.Value);
                 Ktemp = tf(Ki, [1, 0, 0]);
@@ -838,9 +973,9 @@ function K = get_user_controller(G)
         end
     end
 
-    % Helper function: Returns an HTML string with the symbolic (variable) preview
-  
-    function htmlStr = getSymbolicPreviewHTML(ctrlType)
+    % Helper function: Returns an HTML string with the symbolic preview
+    function htmlStr = getSymbolicPreviewHTML(ctrlType, ~)
+        
         switch ctrlType
             case 'P'
                 numHTML = 'Kp';
@@ -873,20 +1008,18 @@ function K = get_user_controller(G)
                 numHTML = '?';
                 denHTML = '?';
         end
-        htmlStr = ['<html><head><style>',...
-            '.container { display: inline-flex; align-items: center; justify-content: center; width: 100%; }',...
-            '.label { font-size:16px; margin-right:10px; }',...
-            '.fraction { display:inline-block; text-align:center; }',...
-            '.fraction .num { display:block; border-bottom:1px solid black; padding-bottom:2px; }',...
-            '.fraction .den { display:block; padding-top:2px; }',...
-            '</style></head><body>',...
-            '<div class="container">',...
-            '<div class="label">Preview:</div>',...
-            '<div class="fraction">',...
-            '<span class="num">', numHTML, '</span>',...
-            '<span class="den">', denHTML, '</span>',...
-            '</div>',...
-            '</div>',...
+        
+        % Create the HTML fraction with exact same styling as transfer function UI
+        htmlStr = ['<html><head><style>', ...
+            'body { display: flex; justify-content: center; align-items: center; height: 100%; margin: 0; padding: 0; }', ...
+            '.fraction { display: inline-block; vertical-align: middle; margin: 0 auto; text-align: center; }', ...
+            '.fraction .num { border-bottom: 1px solid black; padding: 5px 15px; font-size: 16px; }', ...
+            '.fraction .den { padding: 5px 15px; font-size: 16px; }', ...
+            '</style></head><body>', ...
+            '<div class="fraction">', ...
+            '<div class="num">', numHTML, '</div>', ...
+            '<div class="den">', denHTML, '</div>', ...
+            '</div>', ...
             '</body></html>'];
     end
 end
