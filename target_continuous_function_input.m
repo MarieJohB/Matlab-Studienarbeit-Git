@@ -17,51 +17,56 @@ appColors = struct(...
     'lightText', [1 1 1]);                 % White text for dark backgrounds
 
 % Create UI figure with enhanced styling - INCREASED SIZE
-cont_fig = uifigure('Name', 'Reference Signal Input', 'Position', [400, 200, 700, 600]);
+cont_fig = uifigure('Name', 'Reference Signal Input', 'Position', [400, 200, 700, 615]);
 cont_fig.Color = appColors.background;
 
 % Add title panel with enhanced styling
-titlePanel = uipanel(cont_fig, 'Position', [10 550 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+titlePanel = uipanel(cont_fig, 'Position', [10 565 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
 titleLabel = uilabel(titlePanel, 'Text', 'Continuous Function Input (r(t))', ...
-    'Position', [0 0 680 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Position', [0 0 695 40], 'FontSize', 16, 'FontWeight', 'bold', ...
     'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
 
 % Add plot area in a panel - INCREASED SIZE
 previewPanel = uipanel(cont_fig, 'Title', 'Function Preview', ...
-    'Position', [10 240 680 300], 'TitlePosition', 'centertop', ...
+    'Position', [10 255 680 300], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-ax = uiaxes(previewPanel, 'Position', [20, 20, 640, 250]);
+ax = uiaxes(previewPanel, 'Position', [20, 10, 640, 250]);
 xlabel(ax, 'Time (s)');
 % No y-label as requested
 grid(ax, 'on');
 
 % Time parameters panel
 timePanel = uipanel(cont_fig, 'Title', 'Time Parameters', ...
-    'Position', [10 160 680 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 175 680 70], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-% Time vector inputs with improved layout
-uilabel(timePanel, 'Text', 'Start Time:', 'Position', [20, 20, 80, 22], 'FontSize', 12);
-startField = uieditfield(timePanel, 'numeric', 'Position', [110, 20, 80, 22], 'Value', 0, 'FontSize', 12);
+% Calculate center positions for time parameter fields
+panelWidth = 680;
+totalFieldsWidth = 680;  % Total width of all labels and fields
+startX = (panelWidth - totalFieldsWidth) / 2;
 
-uilabel(timePanel, 'Text', 'End Time:', 'Position', [210, 20, 80, 22], 'FontSize', 12);
-endField = uieditfield(timePanel, 'numeric', 'Position', [290, 20, 80, 22], 'Value', 10, 'FontSize', 12);
+% Time vector inputs with centered layout
+uilabel(timePanel, 'Text', 'Start Time:', 'Position', [10, 13, 80, 22], 'FontSize', 12);
+startField = uieditfield(timePanel, 'numeric', 'Position', [90, 13, 80, 22], 'Value', 0, 'FontSize', 12);
 
-uilabel(timePanel, 'Text', 'Time Steps:', 'Position', [390, 20, 80, 22], 'FontSize', 12);
-stepField = uieditfield(timePanel, 'numeric', 'Position', [480, 20, 80, 22], 'Value', 0.1, 'FontSize', 12);
+uilabel(timePanel, 'Text', 'End Time:', 'Position', [220, 13, 80, 22], 'FontSize', 12);
+endField = uieditfield(timePanel, 'numeric', 'Position', [300, 13, 80, 22], 'Value', 10, 'FontSize', 12);
+
+uilabel(timePanel, 'Text', 'Time Steps:', 'Position', [430, 13, 80, 22], 'FontSize', 12);
+stepField = uieditfield(timePanel, 'numeric', 'Position', [510, 13, 80, 22], 'Value', 0.1, 'FontSize', 12);
 
 % Function input panel
 functionPanel = uipanel(cont_fig, 'Title', 'Function Definition', ...
-    'Position', [10 90 680 60], 'TitlePosition', 'centertop', ...
+    'Position', [10 105 680 60], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-uilabel(functionPanel, 'Text', 'r(t) =', 'Position', [20, 15, 50, 22], 'FontSize', 12, 'FontWeight', 'bold');
-funcField = uieditfield(functionPanel, 'text', 'Position', [70, 15, 590, 22], 'Value', '', 'FontSize', 12);
+uilabel(functionPanel, 'Text', 'r(t) =', 'Position', [20, 8, 50, 22], 'FontSize', 12, 'FontWeight', 'bold');
+funcField = uieditfield(functionPanel, 'text', 'Position', [70, 8, 590, 22], 'Value', '', 'FontSize', 12);
 
 % Button panel - INCREASED SIZE
 buttonPanel = uipanel(cont_fig, 'Title', 'Actions', ...
-    'Position', [10 10 680 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 10 680 85], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 % Center buttons in panel
