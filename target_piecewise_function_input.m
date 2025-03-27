@@ -1,7 +1,11 @@
 function target_piecewise_function_input(selection_fig)
 % TARGET_PIECEWISE_FUNCTION_INPUT - Enhanced UI for piecewise function input
+% Designed to match the dimensions and layout of target_continuous_function_input
+%
+% Parameters:
+%   selection_fig - The main selection figure handle
 
-% Define unified color scheme
+% Define unified color scheme to match continuous function input
 appColors = struct(...
     'background', [0.95 0.95 0.97], ...    % Light gray background
     'panelHeader', [0.2 0.4 0.7], ...      % Blue panel header
@@ -22,36 +26,36 @@ if isempty(num_sections)
     return;
 end
 
-% Create UI figure with enhanced styling - INCREASED SIZE
-piece_fig = uifigure('Name', 'Piecewise Reference Signal Input', 'Position', [300, 150, 900, 700]);
+% Create UI figure with enhanced styling - SAME SIZE AS CONTINUOUS FUNCTION INPUT
+piece_fig = uifigure('Name', 'Piecewise Reference Signal Input', 'Position', [400, 200, 700, 615]);
 piece_fig.Color = appColors.background;
 
-% Add title panel with enhanced styling
-titlePanel = uipanel(piece_fig, 'Position', [10 650 880 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+% Add title panel with enhanced styling - MATCH CONTINUOUS FUNCTION INPUT
+titlePanel = uipanel(piece_fig, 'Position', [10 565 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
 titleLabel = uilabel(titlePanel, 'Text', ['Piecewise Function Input (r(t)) - ', num2str(num_sections), ' Sections'], ...
-    'Position', [0 0 880 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Position', [0 0 680 40], 'FontSize', 16, 'FontWeight', 'bold', ...
     'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
 
-% Add plot area in a panel - INCREASED SIZE
+% Add plot area in a panel - SMALLER TO MAKE ROOM FOR SECTION DEFINITIONS
 previewPanel = uipanel(piece_fig, 'Title', 'Function Preview', ...
-    'Position', [10 430 880 210], 'TitlePosition', 'centertop', ...
+    'Position', [10 300 680 255], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-ax = uiaxes(previewPanel, 'Position', [20, 20, 840, 160]);
+ax = uiaxes(previewPanel, 'Position', [20, 10, 640, 205]);
 xlabel(ax, 'Time (s)');
 % No y-label as requested
 grid(ax, 'on');
 
-% Create table panel
+% Create table panel - ENLARGED TO USE NEWLY AVAILABLE SPACE
 tablePanel = uipanel(piece_fig, 'Title', 'Section Definitions', ...
-    'Position', [10 180 880 240], 'TitlePosition', 'centertop', ...
+    'Position', [10 105 680 185], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 % Create table for sections with input fields
 columnNames = {'Start Time', 'End Time', 'Time Steps', 'r(t)'};
 columnTypes = {'numeric', 'numeric', 'numeric', 'char'};
 columnEditable = [true, true, true, true];
-columnWidth = {90, 90, 90, 500};
+columnWidth = {90, 90, 90, 310};
 
 % Initialize data with default values
 data = cell(num_sections, 4);
@@ -66,76 +70,112 @@ for i = 1:num_sections
     data{i, 4} = ''; % Empty function by default
 end
 
-% Create the table with enhanced styling
-pieceTable = uitable(tablePanel, 'Position', [20, 20, 840, 190], ...
+% Create the table with enhanced styling - MADE TALLER TO USE AVAILABLE SPACE
+pieceTable = uitable(tablePanel, 'Position', [20, 10, 640, 145], ...
     'Data', data, 'ColumnName', columnNames, 'ColumnEditable', columnEditable, ...
     'ColumnWidth', columnWidth, 'FontSize', 12, 'RowName', arrayfun(@(x) ['Section ' num2str(x)], 1:num_sections, 'UniformOutput', false));
 
-% Button panel with title - INCREASED SIZE
+% Add cell edit callback to synchronize time steps and update start times
+pieceTable.CellEditCallback = @(src, event) updateTableValues(src, event);
+
+% Button panel - MATCH CONTINUOUS FUNCTION INPUT
 buttonPanel = uipanel(piece_fig, 'Title', 'Actions', ...
-    'Position', [10 20 880 150], 'TitlePosition', 'centertop', ...
+    'Position', [10 10 680 85], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-% Center buttons
-panelCenter = 880/2;
+% Center buttons in panel - MATCH CONTINUOUS FUNCTION INPUT
+panelCenter = 680/2;
 buttonWidth = 100;
 spacing = 20;
 totalWidth = 3*buttonWidth + 2*spacing;
 startX = panelCenter - totalWidth/2;
 
-% Preview button
-previewButton = uibutton(buttonPanel, 'push', 'Position', [startX, 90, buttonWidth, 30], ...
+% Preview button - MATCH CONTINUOUS FUNCTION INPUT
+previewButton = uibutton(buttonPanel, 'push', 'Position', [startX, 25, buttonWidth, 30], ...
     'Text', 'Preview', ...
     'FontSize', 12, ...
     'BackgroundColor', appColors.buttonPrimary, ...
     'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) target_preview_piecewise_function(ax, pieceTable));
 
-% Confirm button
-confirmButton = uibutton(buttonPanel, 'push', 'Position', [startX + buttonWidth + spacing, 90, buttonWidth, 30], ...
+% Confirm button - MATCH CONTINUOUS FUNCTION INPUT
+confirmButton = uibutton(buttonPanel, 'push', 'Position', [startX + buttonWidth + spacing, 25, buttonWidth, 30], ...
     'Text', 'Confirm', ...
     'FontSize', 12, ...
     'BackgroundColor', appColors.buttonConfirm, ...
     'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) target_confirm_piecewise_function(selection_fig, piece_fig, pieceTable));
 
-% Cancel button
-cancelButton = uibutton(buttonPanel, 'push', 'Position', [startX + 2*(buttonWidth + spacing), 90, buttonWidth, 30], ...
+% Cancel button - MATCH CONTINUOUS FUNCTION INPUT
+cancelButton = uibutton(buttonPanel, 'push', 'Position', [startX + 2*(buttonWidth + spacing), 25, buttonWidth, 30], ...
     'Text', 'Cancel', ...
     'FontSize', 12, ...
     'BackgroundColor', appColors.buttonCancel, ...
     'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) target_cancel_input(piece_fig));
 
-% Help button centered under the Confirm button
+% Help button centered under the Confirm button - MATCH CONTINUOUS FUNCTION INPUT
 helpBtn = uibutton(buttonPanel, 'push', 'Text', 'Help', ...
-    'Position', [startX + buttonWidth + spacing, 50, buttonWidth, 30], ...
+    'Position', [startX + buttonWidth + spacing, 5, buttonWidth, 18], ...
     'BackgroundColor', appColors.buttonPrimary, ...
     'FontColor', appColors.lightText, ...
-    'FontSize', 12, ...
+    'FontSize', 10, ...
     'ButtonPushedFcn', @(btn, event) showHelpDialog());
+
+% Function to update time steps and start times when cells are edited
+function updateTableValues(src, event)
+    % Get current table data
+    data = src.Data;
+    
+    % Check which column was edited
+    if event.Indices(2) == 3 % Time Steps column
+        % Get the new time step value
+        newTimeStep = event.NewData;
+        
+        % Update all rows with the same time step
+        for row = 1:size(data, 1)
+            data{row, 3} = newTimeStep;
+        end
+        
+        % Update the table data
+        src.Data = data;
+    elseif event.Indices(2) == 2 % End Time column
+        % If end time is edited, update the start time of the next section
+        row = event.Indices(1);
+        if row < size(data, 1)
+            data{row+1, 1} = event.NewData; % Set start time of next section
+            
+            % Also update any subsequent sections to maintain continuity
+            for nextRow = row+2:size(data, 1)
+                data{nextRow, 1} = data{nextRow-1, 2};
+            end
+            
+            src.Data = data;
+        end
+    end
+end
 
 % Function to show help dialog
 function showHelpDialog()
-    helpFig = uifigure('Name', 'Function Input Help', 'Position', [350, 200, 500, 500]);
+    helpFig = uifigure('Name', 'Function Input Help', 'Position', [450, 300, 500, 400]);
     helpFig.Color = appColors.background;
     
     % Title panel for help
-    helpTitlePanel = uipanel(helpFig, 'Position', [10 450 480 40], ...
+    helpTitlePanel = uipanel(helpFig, 'Position', [10 350 480 40], ...
         'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
     helpTitleLabel = uilabel(helpTitlePanel, 'Text', 'Piecewise Function Input Reference', ...
         'Position', [0 0 480 40], 'FontSize', 16, 'FontWeight', 'bold', ...
         'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
     
     % Help text area
-    helpText = uitextarea(helpFig, 'Position', [20 60 460 380], 'Editable', 'off', 'FontSize', 12);
+    helpText = uitextarea(helpFig, 'Position', [20 60 460 280], 'Editable', 'off', 'FontSize', 12);
     helpText.Value = {
         'Piecewise Function Input Guide:', 
-        '------------------------------', 
+        '-----------------------', 
         'For each section, define:', 
         '• Start Time: Beginning of the time segment', 
         '• End Time: End of the time segment', 
-        '• Time Steps: Sampling interval within the segment', 
+        '• Time Steps: Sampling interval within the segment (common to all sections)', 
         '• r(t): Mathematical expression defining the function', 
         '', 
         'Rules for sections:', 
@@ -159,8 +199,8 @@ function showHelpDialog()
         '', 
         'Tips:', 
         '• Use "*" for multiplication: "5*t" not "5t"', 
-        '• Ensure proper syntax for functions and operators', 
-        '• Use mathematical constants like pi if needed'
+        '• Time Steps applies to all sections', 
+        '• Ensure proper syntax for functions and operators'
     };
     
     % Close button
@@ -169,33 +209,28 @@ function showHelpDialog()
         'BackgroundColor', appColors.buttonPrimary, ...
         'FontColor', appColors.lightText, ...
         'ButtonPushedFcn', @(~,~) close(helpFig));
-end
+end 
 
 % Get section count with enhanced UI
-function count = getSectionCount()
-    % Create a modal UI figure with styling
-    sectionFig = uifigure('Name', 'Number of Sections', 'Position', [400, 300, 350, 250], 'WindowStyle', 'modal');
+    function count = getSectionCount()
+    % Create a modal UI figure with styling matching the signal type selection window
+    sectionFig = uifigure('Name', 'Number of Sections', 'Position', [500, 300, 300, 220], 'WindowStyle', 'modal');
     sectionFig.Color = appColors.background;
     
-    % Title panel
-    secTitlePanel = uipanel(sectionFig, 'Position', [10 200 330 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
-    secTitleLabel = uilabel(secTitlePanel, 'Text', 'Define Number of Sections', ...
-        'Position', [0 0 330 40], 'FontSize', 16, 'FontWeight', 'bold', ...
+    % Add title panel with enhanced styling - matches signal type selection
+    titlePanel = uipanel(sectionFig, 'Position', [10 170 280 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+    titleLabel = uilabel(titlePanel, 'Text', 'Select Number of Sections', ...
+        'Position', [0 0 280 40], 'FontSize', 16, 'FontWeight', 'bold', ...
         'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
     
-    % Input panel
-    inputPanel = uipanel(sectionFig, 'Position', [75 100 200 50], 'BackgroundColor', appColors.panelBg, 'BorderType', 'line');
-    
-    % Number input with spinner
-    sectionSpinner = uispinner(inputPanel, 'Position', [50 10 100 30], ...
+    % Create a larger spinner instead of panel with spinner
+    % Position it in the center of the window
+    sectionSpinner = uispinner(sectionFig, 'Position', [100, 100, 100, 40], ...
         'Value', 2, 'Limits', [1 5], 'Step', 1, 'FontSize', 14);
     
-    % Button panel
-    btnPanel = uipanel(sectionFig, 'Position', [10 20 330 60], 'BorderType', 'none', 'BackgroundColor', appColors.background);
-    
-    % OK button
-    okBtn = uibutton(btnPanel, 'push', 'Text', 'OK', ...
-        'Position', [125, 15, 100, 30], ...
+    % OK button - matching the Cancel button position in signal type window
+    okBtn = uibutton(sectionFig, 'push', 'Text', 'OK', ...
+        'Position', [100, 10, 100, 30], ...
         'BackgroundColor', appColors.buttonConfirm, ...
         'FontColor', appColors.lightText, ...
         'FontSize', 12, ...

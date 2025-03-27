@@ -3,9 +3,9 @@ function disturbance_continuous_function_input(selection_fig, disturbance_label)
 %
 % Parameters:
 %   selection_fig - The main selection figure handle
-%   disturbance_label - Label for the disturbance (e.g. 'd_1')
+%   disturbance_label - Label for the disturbance (e.g. 'd_1' or 'd_2')
 
-% Define unified color scheme
+% Define unified color scheme to match get_user_controller and get_user_transfer_function
 appColors = struct(...
     'background', [0.95 0.95 0.97], ...    % Light gray background
     'panelHeader', [0.2 0.4 0.7], ...      % Blue panel header
@@ -17,52 +17,57 @@ appColors = struct(...
     'text', [0.2 0.2 0.2], ...             % Dark text
     'lightText', [1 1 1]);                 % White text for dark backgrounds
 
-% Create UI figure with enhanced styling - INCREASED SIZE
-cont_fig = uifigure('Name', [disturbance_label ' Function Input'], 'Position', [400, 200, 700, 600]);
+% Create UI figure with enhanced styling - INCREASED SIZE to match target function input
+cont_fig = uifigure('Name', [disturbance_label ' Function Input'], 'Position', [400, 200, 700, 615]);
 cont_fig.Color = appColors.background;
 
 % Add title panel with enhanced styling
-titlePanel = uipanel(cont_fig, 'Position', [10 550 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+titlePanel = uipanel(cont_fig, 'Position', [10 565 680 40], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
 titleLabel = uilabel(titlePanel, 'Text', ['Continuous Function Input (', disturbance_label, '(t))'], ...
     'Position', [0 0 680 40], 'FontSize', 16, 'FontWeight', 'bold', ...
     'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
 
-% Add plot area in a panel - INCREASED SIZE
+% Add plot area in a panel - INCREASED SIZE to match target function input
 previewPanel = uipanel(cont_fig, 'Title', 'Function Preview', ...
-    'Position', [10 240 680 300], 'TitlePosition', 'centertop', ...
+    'Position', [10 255 680 300], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-ax = uiaxes(previewPanel, 'Position', [20, 20, 640, 250]);
+ax = uiaxes(previewPanel, 'Position', [20, 10, 640, 250]);
 xlabel(ax, 'Time (s)');
 % No y-label as requested
 grid(ax, 'on');
 
 % Time parameters panel
 timePanel = uipanel(cont_fig, 'Title', 'Time Parameters', ...
-    'Position', [10 160 680 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 175 680 70], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-% Time vector inputs with improved layout
-uilabel(timePanel, 'Text', 'Start Time:', 'Position', [20, 20, 80, 22], 'FontSize', 12);
-startField = uieditfield(timePanel, 'numeric', 'Position', [110, 20, 80, 22], 'Value', 0, 'FontSize', 12);
+% Calculate center positions for time parameter fields
+panelWidth = 680;
+totalFieldsWidth = 680;  % Total width of all labels and fields
+startX = (panelWidth - totalFieldsWidth) / 2;
 
-uilabel(timePanel, 'Text', 'End Time:', 'Position', [210, 20, 80, 22], 'FontSize', 12);
-endField = uieditfield(timePanel, 'numeric', 'Position', [290, 20, 80, 22], 'Value', 10, 'FontSize', 12);
+% Time vector inputs with centered layout
+uilabel(timePanel, 'Text', 'Start Time:', 'Position', [10, 13, 80, 22], 'FontSize', 12);
+startField = uieditfield(timePanel, 'numeric', 'Position', [90, 13, 80, 22], 'Value', 0, 'FontSize', 12);
 
-uilabel(timePanel, 'Text', 'Time Steps:', 'Position', [390, 20, 80, 22], 'FontSize', 12);
-stepField = uieditfield(timePanel, 'numeric', 'Position', [480, 20, 80, 22], 'Value', 0.1, 'FontSize', 12);
+uilabel(timePanel, 'Text', 'End Time:', 'Position', [220, 13, 80, 22], 'FontSize', 12);
+endField = uieditfield(timePanel, 'numeric', 'Position', [300, 13, 80, 22], 'Value', 10, 'FontSize', 12);
+
+uilabel(timePanel, 'Text', 'Time Steps:', 'Position', [430, 13, 80, 22], 'FontSize', 12);
+stepField = uieditfield(timePanel, 'numeric', 'Position', [510, 13, 80, 22], 'Value', 0.1, 'FontSize', 12);
 
 % Function input panel
 functionPanel = uipanel(cont_fig, 'Title', 'Function Definition', ...
-    'Position', [10 90 680 60], 'TitlePosition', 'centertop', ...
+    'Position', [10 105 680 60], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
-uilabel(functionPanel, 'Text', [disturbance_label, '(t) ='], 'Position', [20, 15, 50, 22], 'FontSize', 12, 'FontWeight', 'bold');
-funcField = uieditfield(functionPanel, 'text', 'Position', [70, 15, 590, 22], 'Value', '', 'FontSize', 12);
+uilabel(functionPanel, 'Text', [disturbance_label, '(t) ='], 'Position', [20, 8, 50, 22], 'FontSize', 12, 'FontWeight', 'bold');
+funcField = uieditfield(functionPanel, 'text', 'Position', [70, 8, 590, 22], 'Value', '', 'FontSize', 12);
 
 % Button panel - INCREASED SIZE
 buttonPanel = uipanel(cont_fig, 'Title', 'Actions', ...
-    'Position', [10 10 680 70], 'TitlePosition', 'centertop', ...
+    'Position', [10 10 680 85], 'TitlePosition', 'centertop', ...
     'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
 
 % Center buttons in panel
@@ -96,7 +101,7 @@ cancelButton = uibutton(buttonPanel, 'push', 'Position', [startX + 2*(buttonWidt
     'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn, event) disturbance_cancel_input(cont_fig));
 
-% Help button renamed and moved below Confirm button with adequate size
+% Help button centered under Confirm button (matches target_continuous_function_input)
 helpBtn = uibutton(buttonPanel, 'push', 'Text', 'Help', ...
     'Position', [startX + buttonWidth + spacing, 5, buttonWidth, 18], ...
     'BackgroundColor', appColors.buttonPrimary, ...
@@ -112,7 +117,7 @@ function showHelpDialog()
     % Title panel for help
     helpTitlePanel = uipanel(helpFig, 'Position', [10 350 480 40], ...
         'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
-    helpTitleLabel = uilabel(helpTitlePanel, 'Text', 'Function Input Reference', ...
+    helpTitleLabel = uilabel(helpTitlePanel, 'Text', ['Function Input Reference for ', disturbance_label, '(t)'], ...
         'Position', [0 0 480 40], 'FontSize', 16, 'FontWeight', 'bold', ...
         'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
     
@@ -120,7 +125,7 @@ function showHelpDialog()
     helpText = uitextarea(helpFig, 'Position', [20 60 460 280], 'Editable', 'off', 'FontSize', 12);
     helpText.Value = {
         ['Function Input Guide for ' disturbance_label '(t):'], 
-        '-----------------------------------------', 
+        '-----------------------', 
         'Enter any valid MATLAB expression using "t" as the time variable.', 
         '', 
         'Examples:', 
@@ -130,19 +135,18 @@ function showHelpDialog()
         '• Trigonometric: "sin(t)" or "cos(2*t)"', 
         '• Exponentials: "exp(-t)" or "exp(-0.5*t)*sin(t)"', 
         '• Step functions: "t>=2" (returns 1 when t≥2, 0 otherwise)', 
-        '• Random noise: "randn(1)" (standard normal distribution)', 
-        '• Impulse: "(t>1 && t<1.1)"', 
+        '• Pulse: "(t>1 && t<1.1)"', 
+        '• Random noise: "0.5*randn(1)"', 
         '', 
         'For disturbances, consider:', 
-        '• Step inputs: "2*(t>5)" (step at t=5 with amplitude 2)', 
+        '• Step disturbances: "2*(t>5)" (step at t=5 with amplitude 2)', 
         '• Random disturbances: "0.5*randn(1)"', 
         '• Sinusoidal disturbances: "0.2*sin(2*t)"', 
-        '• Bounded noise: "0.1*sign(randn(1))"', 
         '', 
         'Tips:', 
         '• Use "*" for multiplication: "5*t" not "5t"', 
         '• Ensure proper syntax for functions and operators', 
-        '• For no disturbance, enter "0" or leave empty'
+        '• For no disturbance, enter "0"'
     };
     
     % Close button
