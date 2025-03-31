@@ -1,3 +1,4 @@
+% Helper function for cleanup of transfer function coefficients
 function coefs_clean = cleanup_tf_coefficients(coefs)
     % Helper function to clean up very small coefficients that might be numerical noise
     % This improves the quality of the resulting transfer function

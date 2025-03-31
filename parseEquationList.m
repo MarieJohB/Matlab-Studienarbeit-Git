@@ -7,7 +7,7 @@ function eqList = parseEquationList(eqListStr)
     end
     
     % Split by semicolons
-    items = split(eqListStr, ';');
+    items = strsplit(eqListStr, ';');
     
     % Trim whitespace and filter empty items
     eqList = {};

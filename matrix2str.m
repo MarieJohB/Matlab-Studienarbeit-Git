@@ -1,6 +1,12 @@
 function str = matrix2str(A)
-    % Convert a matrix to a string representation
+    % Convert a matrix to a string representation with improved error handling
     % Format: [a b c; d e f] becomes "a b c; d e f"
+    
+    % Handle empty matrix
+    if isempty(A)
+        str = '';
+        return;
+    end
     
     [m, n] = size(A);
     str = '';

@@ -7,7 +7,7 @@ function varList = parseVariableList(varListStr)
     end
     
     % Split by commas
-    items = split(varListStr, ',');
+    items = strsplit(varListStr, ',');
     
     % Trim whitespace and filter empty items
     varList = {};

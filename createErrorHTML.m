@@ -1,3 +1,4 @@
+% Helper function to create HTML error messages
 function htmlContent = createErrorHTML(errorMessage)
     % Creates standardized HTML error messages
     htmlContent = ['<html><head><style>', ...
