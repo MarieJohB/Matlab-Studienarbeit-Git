@@ -25,7 +25,7 @@ function K = get_user_controller(G)
         'lightText', [1 1 1]);                    % White text for dark backgrounds
     
     % Create main figure with improved styling
-    mainFig = uifigure('Name', 'Controller Selection', 'Position', [100 100 700 500]);
+    mainFig = uifigure('Name', 'Controller Selection', 'Position', [100 100 700 500]); % Standard height
     mainFig.Color = appColors.background;
     
     % Add title panel
@@ -40,9 +40,10 @@ function K = get_user_controller(G)
         'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
     
     % Create buttons for standard controllers in a grid layout
-    controllers = {'P','PI','PD','PID','PT1','PIT1','I2','PIDT1','Custom'};
+    % CHANGE: Removed the advanced methods from this grid
+    controllers = {'P','PI','PD','PID','PT1','PIT1','I2','PIDT1','Custom','Pole Placement'};
     grid_width = 3;
-    grid_height = 3;
+    grid_height = 4;  % Enough for 10 buttons (3 columns * 4 rows = 12 max)
     button_width = 160;
     button_height = 60;
     h_spacing = 30;
@@ -54,7 +55,7 @@ function K = get_user_controller(G)
     
     % Calculate starting position to center the grid
     start_x = (680 - total_width) / 2;
-    start_y = 185;
+    start_y = 260; % Increased starting height position
     
     % Create buttons in grid layout
     for i = 1:length(controllers)
@@ -161,6 +162,11 @@ function K = get_user_controller(G)
                 defaultVals = {'1 0', '1 1'};
                 symbolic = {'num', 'den'};
                 symbolPreview = 'numerator / denominator';
+            case 'Pole Placement'
+                fieldLabels = {'Desired Bandwidth (rad/s):', 'Damping Ratio:', 'Derivative Filter (epsilon):'};
+                defaultVals = {'0.3', '1.0', '0.1'}; % Safer default values for unstable systems
+                symbolic = {'ω', 'ζ', 'ε'};
+                symbolPreview = 'Pole Placement: ω = desired bandwidth, ζ = damping ratio';
         end
         numFields = length(fieldLabels);
         
@@ -238,9 +244,74 @@ function K = get_user_controller(G)
                 previewHTML.HTMLSource = getSymbolicPreviewHTML(ctrlType, symbolPreview);
                 return;
             end
+            
             % Otherwise, try to compute numeric transfer function preview
             try
+                % Special handling for Pole Placement
+                if strcmp(ctrlType, 'Pole Placement')
+                    try
+                        % Simple plant analysis for preview
+                        p = pole(G);
+                        try
+                            z = zero(G);
+                        catch
+                            z = [];
+                        end
+                        
+                        % Create a basic plantInfo structure
+                        plantInfo = struct();
+                        plantInfo.isUnstable = any(real(p) > 0);
+                        plantInfo.poles = p;
+                        plantInfo.zeros = z;
+                    catch
+                        % If analysis fails, assume a stable plant
+                        plantInfo = struct();
+                        plantInfo.isUnstable = false;
+                    end
+                    % Extract parameters
+                    bandwidth = convertValue(fields{1}.Value);
+                    damping = convertValue(fields{2}.Value);
+                    epsilon = convertValue(fields{3}.Value);
+                    
+                    % Create a representative PID controller for preview
+                    % This is just for preview purposes and doesn't need the actual pole placement calculation
+                    if plantInfo.isUnstable
+                        % For unstable plants, use more conservative parameters
+                        Kp = 1.0;
+                        Ki = 0.01;
+                        Kd = 5.0;
+                    else
+                        % For stable plants
+                        Kp = bandwidth;
+                        Ki = bandwidth^2 / 10;
+                        Kd = bandwidth / 5;
+                    end
+                    
+                    % Create the HTML for the fraction representing a PID controller
+                    numHTML = sprintf('%.2fs<sup>2</sup> + %.2fs + %.3f', Kd, Kp, Ki);
+                    denHTML = sprintf('%.3fs<sup>2</sup> + s', epsilon*Kd);
+                    
+                    % Create HTML fraction with exact same styling as other controllers
+                    formulaHTML = ['<html><head><style>', ...
+                        'body { display: flex; justify-content: center; align-items: center; height: 100%; margin: 0; padding: 0; }', ...
+                        '.fraction { display: inline-block; vertical-align: middle; margin: 0 auto; text-align: center; }', ...
+                        '.fraction .num { border-bottom: 1px solid black; padding: 5px 15px; font-size: 16px; }', ...
+                        '.fraction .den { padding: 5px 15px; font-size: 16px; }', ...
+                        '</style></head><body>', ...
+                        '<div class="fraction">', ...
+                        '<div class="num">', numHTML, '</div>', ...
+                        '<div class="den">', denHTML, '</div>', ...
+                        '</div>', ...
+                        '<div style="margin-top: 10px; font-size: 12px; color: #666;">PID approximation (preview only)</div>', ...
+                        '</body></html>'];
+                    
+                    previewHTML.HTMLSource = formulaHTML;
+                    return;
+                end
+                
+                % For other controller types, compute normally
                 Ktemp = computeController(ctrlType, fields);
+                
                 % Extract numerator and denominator from the transfer function (assumed SISO)
                 numCell = Ktemp.Numerator;
                 denCell = Ktemp.Denominator;
@@ -311,11 +382,11 @@ function K = get_user_controller(G)
         plantOrder = length(pole(G));
         
         % Create a figure with improved styling
-        autoTuneFig = uifigure('Name', 'Automatic Controller Design', 'Position', [300 150 700 700]);
+        autoTuneFig = uifigure('Name', 'Automatic Controller Design', 'Position', [300 150 700 720]); % Increased height
         autoTuneFig.Color = appColors.background;
         
         % Add a professional-looking title and plant info
-        titlePanel = uipanel(autoTuneFig, 'Position', [10 630 680 60], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+        titlePanel = uipanel(autoTuneFig, 'Position', [10 650 680 60], 'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
         titleLabel = uilabel(titlePanel, 'Text', 'Controller Auto-Tuning', ...
             'Position', [0 0 680 60], 'FontSize', 20, 'FontWeight', 'bold', ...
             'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
@@ -331,16 +402,16 @@ function K = get_user_controller(G)
         
         plantInfoText = sprintf('Plant G(s): %s, Order %d', stabilityText, plantOrder);
         plantInfoLabel = uilabel(autoTuneFig, 'Text', plantInfoText, ...
-            'Position', [10 600 680 20], 'FontWeight', 'bold', ...
+            'Position', [10 620 680 20], 'FontWeight', 'bold', ...
             'FontColor', stabilityColor, 'HorizontalAlignment', 'center');
         
         % Create main panels with improved styling
         designPanel = uipanel(autoTuneFig, 'Title', 'Design Methods', ...
-            'Position', [10 420 680 170], 'TitlePosition', 'centertop', ...
+            'Position', [10 410 680 200], 'TitlePosition', 'centertop', ... % Increased height
             'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         controllerPanel = uipanel(autoTuneFig, 'Title', 'Controller Configuration', ...
-            'Position', [10 330 680 80], 'TitlePosition', 'centertop', ...
+            'Position', [10 330 680 70], 'TitlePosition', 'centertop', ...
             'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
         performancePanel = uipanel(autoTuneFig, 'Title', 'Performance Requirements', ...
@@ -362,14 +433,18 @@ function K = get_user_controller(G)
             'IMC (Internal Model Control)', isApplicable(G, 'IMC'),
             'MIGO (M-constrained Integral Gain Optimization)', isApplicable(G, 'MIGO'),
             'H-infinity', isApplicable(G, 'H-infinity'),
-            'LQG (Linear-Quadratic-Gaussian)', isApplicable(G, 'LQG')
+            'LQG (Linear-Quadratic-Gaussian)', isApplicable(G, 'LQG'),
+            'Enhanced State Feedback', isApplicable(G, 'Enhanced State Feedback'),
+            'Pre-stabilization', isApplicable(G, 'Pre-stabilization'),
+            'Youla-Kucera Parameterization', isApplicable(G, 'Youla-Kucera Parameterization'),
+            'Robust µ-synthesis', isApplicable(G, 'Robust µ-synthesis')
         };
         
-        % Calculate rows and columns for methods layout
+        % CHANGE: Improved layout for methods to ensure all are visible
         numMethods = size(methods, 1);
         numRows = ceil(numMethods / 2);
         
-        % Create checkboxes in a grid layout
+        % Create checkboxes in a more compact grid layout
         methodCheckboxes = [];
         for i = 1:numMethods
             row = ceil(i / 2);
@@ -377,12 +452,12 @@ function K = get_user_controller(G)
             
             % Calculate position - x offset for second column
             x = 20 + col * 340;
-            y = 140 - row * 25;
+            y = 170 - row * 20;  % Reduced spacing further and increased start height
             
             % Create checkbox with improved styling
             cb = uicheckbox(designPanel, 'Text', methods{i, 1}, ...
-                'Position', [x y 320 22], 'Value', methods{i, 2}, ...
-                'FontSize', 12);
+                'Position', [x y 320 20], 'Value', methods{i, 2}, ...
+                'FontSize', 11);  % Slightly smaller font to fit
             
             % Gray out and disable if not applicable
             if ~methods{i, 2}
@@ -397,26 +472,27 @@ function K = get_user_controller(G)
         
         % Add a "What are these methods?" button with information tooltip
         infoBtn = uibutton(designPanel, 'Text', 'Method Information', ...
-            'Position', [555 110 115 30], 'ButtonPushedFcn', @showMethodInfo, ...
+            'Position', [555 160 115 30], 'ButtonPushedFcn', @showMethodInfo, ...
             'BackgroundColor', appColors.buttonPrimary, 'FontColor', appColors.lightText);
         
         % Controller structure dropdown with improved styling
         structureLabel = uilabel(controllerPanel, 'Text', 'Controller Structure:', ...
-            'Position', [20 30 150 22], 'FontSize', 12);
+            'Position', [20 20 150 22], 'FontSize', 12);
         structureDropdown = uidropdown(controllerPanel, ...
             'Items', {'P', 'PI', 'PD', 'PID'}, ...
-            'Position', [170 30 150 22], 'Value', 'PID', ...
+            'Position', [170 20 150 22], 'Value', 'PID', ...
             'FontSize', 12);
         
         % D-Term filter parameter with improved styling
         filterLabel = uilabel(controllerPanel, 'Text', 'D-Term Filter (epsilon):', ...
-            'Position', [350 30 170 22], 'FontSize', 12);
+            'Position', [350 20 170 22], 'FontSize', 12);
         filterField = uieditfield(controllerPanel, 'numeric', ...
-            'Position', [520 30 100 22], 'Value', 0.1, ...
+            'Position', [520 20 100 22], 'Value', 0.1, ...
             'Limits', [0.001 0.5], 'LowerLimitInclusive', true, 'UpperLimitInclusive', true, ...
             'FontSize', 12);
         
         % Performance requirements with improved layout
+        % CHANGE: Fixed damping ratio position to be properly inside the panel
         % Left column
         phaseMarginLabel = uilabel(performancePanel, 'Text', 'Phase Margin (deg):', ...
             'Position', [20 80 150 22], 'FontSize', 12);
@@ -459,6 +535,14 @@ function K = get_user_controller(G)
         goalDropdown = uidropdown(performancePanel, ...
             'Items', {'Tracking', 'Disturbance Rejection', 'Robustness'}, ...
             'Position', [450 20 170 22], 'Value', 'Tracking', ...
+            'FontSize', 12);
+        
+        % CHANGE: Fixed damping ratio position - now properly inside the panel
+        dampingLabel = uilabel(performancePanel, 'Text', 'Damping Ratio:', ...
+            'Position', [20, 110, 100, 22], 'FontSize', 12);
+        dampingField = uieditfield(performancePanel, 'numeric', ...
+            'Position', [170, 110, 100, 22], 'Value', 0.8, ...
+            'Limits', [0.1, 2.0], 'LowerLimitInclusive', true, 'UpperLimitInclusive', true, ...
             'FontSize', 12);
         
         % Add a "What's a good score?" button with information
@@ -546,7 +630,27 @@ function K = get_user_controller(G)
                 '   • Best for: Systems with significant uncertainties or disturbances.',
                 '',
                 '10. LQG: Combines linear quadratic regulator with Kalman filtering.',
-                '    • Best for: Optimal control in presence of Gaussian noise.'
+                '    • Best for: Optimal control in presence of Gaussian noise.',
+                '',
+                '11. Enhanced State Feedback with Observer:',
+                '    • Best for: High-order unstable systems and incomplete state measurements.',
+                '    • Features: Combines pole placement with robust state estimation.',
+                '    • Advantages: Better numerical properties for challenging systems.',
+                '',
+                '12. Pre-stabilization Controller Design:',
+                '    • Best for: Systems with multiple unstable poles or both RHP poles and zeros.',
+                '    • Features: Two-step approach that stabilizes first, then optimizes performance.',
+                '    • Advantages: Can handle systems that violate the Parity Interlacing Property (PIP).',
+                '',
+                '13. Youla-Kucera Parameterization:',
+                '    • Best for: Complex systems where standard designs fail.',
+                '    • Features: Direct parameterization of all stabilizing controllers.',
+                '    • Advantages: Guaranteed stability and performance-focused design.',
+                '',
+                '14. Robust µ-synthesis:',
+                '    • Best for: Systems with significant model uncertainty.',
+                '    • Features: Extension of H-infinity with structured uncertainty handling.',
+                '    • Advantages: Optimal robustness against specified uncertainties.'
             };
             
             closeBtn = uibutton(methodInfoFig, 'push', 'Text', 'Close', ...
@@ -647,6 +751,21 @@ function K = get_user_controller(G)
                 case 'LQG'
                     % All plants, requires state-space representation
                     applicable = true;
+                case 'Pole-Placement'
+                    % Pole placement is applicable to almost all systems
+                    applicable = true;
+                case 'Enhanced State Feedback'
+                    % Enhanced State Feedback is applicable to almost all systems
+                    applicable = true;
+                case 'Pre-stabilization'
+                    % Pre-stabilization is most useful for unstable systems
+                    applicable = ~isStable;
+                case 'Youla-Kucera Parameterization'
+                    % Youla-Kucera Parameterization is applicable to all systems
+                    applicable = true;
+                case 'Robust µ-synthesis'
+                    % µ-synthesis is applicable to all systems
+                    applicable = true;
                 otherwise
                     applicable = false;
             end
@@ -669,6 +788,7 @@ function K = get_user_controller(G)
             options.robustness = robustnessDropdown.Value;
             options.overshoot = overshootField.Value;
             options.goal = goalDropdown.Value;
+            options.damping = dampingField.Value;  % Added for pole placement
             
             % Controller structure
             structure = structureDropdown.Value;
@@ -714,8 +834,11 @@ function K = get_user_controller(G)
                             error('Function design_controller_auto not found. Please make sure it is in your MATLAB path.');
                         end
                         
+                        % Map UI method name to function method name if needed
+                        methodNameForFunction = methodName;
+                        
                         % Design controller using selected method
-                        [K_candidate, details] = design_controller_auto(G, methodName, structure, options);
+                        [K_candidate, details] = design_controller_auto(G, methodNameForFunction, structure, options);
                         
                         % Extract score from details
                         score = extractScoreFromDetails(details);
@@ -740,8 +863,8 @@ function K = get_user_controller(G)
                     end
                 end
                 
-                % Display final results
-                if ~isempty(bestController)
+                % Display final results with enhanced diagnostics
+                if ~isempty(bestController) && bestScore > 30
                     scoreLabel = getScoreLabel(bestScore);
                     resultArea.Value = {
                         'Auto-tuning completed!',
@@ -764,8 +887,74 @@ function K = get_user_controller(G)
                     resultArea.Value{end+1} = 'Controller Transfer Function:';
                     resultArea.Value{end+1} = sprintf('Numerator: [%s]', num2str(num, '%.4g '));
                     resultArea.Value{end+1} = sprintf('Denominator: [%s]', num2str(den, '%.4g '));
+                elseif ~isempty(bestController) && bestScore <= 30
+                    % Poor result with diagnostic info
+                    scoreLabel = getScoreLabel(bestScore);
+                    
+                    % Get plant diagnostics
+                    diagnosticInfo = analyzePlantForTroubleshooting(G);
+                    
+                    resultArea.Value = {
+                        'Auto-tuning completed with poor results.',
+                        sprintf('Best controller score: %.2f (%s)', bestScore, scoreLabel),
+                        '',
+                        '== PLANT DIAGNOSTIC INFORMATION =='
+                    };
+                    
+                    % Add diagnostic information
+                    for i = 1:length(diagnosticInfo)
+                        resultArea.Value{end+1} = diagnosticInfo{i};
+                    end
+                    
+                    resultArea.Value{end+1} = '';
+                    resultArea.Value{end+1} = 'RECOMMENDATIONS:';
+                    
+                    % Add recommendations based on diagnostics
+                    if any(real(pole(G)) > 0)
+                        resultArea.Value{end+1} = '• Try the advanced methods for unstable systems';
+                    end
+                    
+                    if any(abs(pole(G)) < 1e-6)
+                        resultArea.Value{end+1} = '• For systems with integrators, try PI or PID with low Ki';
+                    end
+                    
+                    if any(real(zero(G)) > 0)
+                        resultArea.Value{end+1} = '• For non-minimum phase systems, try Youla-Kucera Parameterization';
+                    end
+                    
+                    % Recommend advanced methods
+                    resultArea.Value{end+1} = '• Enhanced State Feedback often works better for high-order systems';
+                    resultArea.Value{end+1} = '• Pre-stabilization works well for multiple unstable poles';
+                    resultArea.Value{end+1} = '• For uncertain models, try Robust µ-synthesis';
+                    
+                    % Enable Apply button but with warning
+                    applyBtn.Enable = 'on';
+                    applyBtn.BackgroundColor = [0.9, 0.6, 0.1];  % Orange warning color
                 else
-                    resultArea.Value = 'Auto-tuning failed. Please try different methods or parameters.';
+                    % Complete failure
+                    resultArea.Value = {'Auto-tuning failed. No usable controller found.'};
+                    
+                    % Get plant diagnostics
+                    diagnosticInfo = analyzePlantForTroubleshooting(G);
+                    
+                    resultArea.Value{end+1} = '';
+                    resultArea.Value{end+1} = '== REASONS FOR FAILURE ==';
+                    
+                    % Add diagnostic information
+                    for i = 1:length(diagnosticInfo)
+                        resultArea.Value{end+1} = diagnosticInfo{i};
+                    end
+                    
+                    resultArea.Value{end+1} = '';
+                    resultArea.Value{end+1} = 'RECOMMENDATIONS:';
+                    resultArea.Value{end+1} = '• Try the advanced controller methods:';
+                    resultArea.Value{end+1} = '  - Pre-stabilization for unstable systems';
+                    resultArea.Value{end+1} = '  - Youla-Kucera for complex systems';
+                    resultArea.Value{end+1} = '  - Enhanced State Feedback for high-order systems';
+                    resultArea.Value{end+1} = '  - Robust µ-synthesis for uncertain models';
+                    
+                    % Disable Apply button
+                    applyBtn.Enable = 'off';
                 end
             catch ME
                 % Handle general errors with detailed stack trace
@@ -795,6 +984,25 @@ function K = get_user_controller(G)
                 matches = regexp(details, 'Controller Score: (\d+\.\d+)/100', 'tokens');
                 if ~isempty(matches) && ~isempty(matches{1})
                     score = str2double(matches{1}{1});
+                else
+                    % If standard score format not found, look for pole placement success indicators
+                    if contains(details, 'Closed-loop system is stable!')
+                        % For pole placement, assign a reasonable score based on stability
+                        score = 75;  % Good score for a stable system
+                        
+                        % Reduce score if warnings are present
+                        if contains(details, 'WARNING')
+                            score = score - 10;
+                        end
+                        
+                        % Boost score if it matches bandwidth and damping requirements
+                        if contains(details, 'Successfully computed state feedback')
+                            score = score + 5;
+                        end
+                    else
+                        % If system is unstable, assign a low score
+                        score = 20;  % Poor score
+                    end
                 end
             catch
                 % If there's any error, return default score
@@ -853,6 +1061,115 @@ function K = get_user_controller(G)
             % Close auto-tuning window without selecting a controller
             close(autoTuneFig);
         end
+        
+        % Plant diagnostics function
+        function diagnosticInfo = analyzePlantForTroubleshooting(G)
+            % Analyzes a plant transfer function for troubleshooting
+            % Returns a cell array of diagnostic messages
+            
+            diagnosticInfo = {};
+            
+            try
+                % Get poles and zeros
+                p = pole(G);
+                try
+                    z = zero(G);
+                catch
+                    z = [];
+                end
+                
+                % Get transfer function data
+                [num, den] = tfdata(G, 'v');
+                
+                % Check system order
+                order = length(p);
+                if order > 3
+                    diagnosticInfo{end+1} = sprintf('• High-order system (order %d)', order);
+                end
+                
+                % Check stability
+                unstable_poles = p(real(p) > 0);
+                if ~isempty(unstable_poles)
+                    diagnosticInfo{end+1} = sprintf('• Unstable system with %d RHP pole(s)', length(unstable_poles));
+                    for i = 1:min(length(unstable_poles), 3)
+                        if imag(unstable_poles(i)) ~= 0
+                            diagnosticInfo{end+1} = sprintf('  - Complex pole at %.3f + %.3fi', real(unstable_poles(i)), imag(unstable_poles(i)));
+                        else
+                            diagnosticInfo{end+1} = sprintf('  - Real pole at %.3f', real(unstable_poles(i)));
+                        end
+                    end
+                end
+                
+                % Check for integrators
+                integrators = p(abs(p) < 1e-6);
+                if ~isempty(integrators)
+                    diagnosticInfo{end+1} = sprintf('• System has %d integrator(s)', length(integrators));
+                end
+                
+                % Check for RHP zeros
+                if ~isempty(z)
+                    rhp_zeros = z(real(z) > 0);
+                    if ~isempty(rhp_zeros)
+                        diagnosticInfo{end+1} = sprintf('• Non-minimum phase with %d RHP zero(s)', length(rhp_zeros));
+                    end
+                end
+                
+                % Check for proper/strictly proper
+                rel_degree = length(den) - length(num);
+                if rel_degree < 0
+                    diagnosticInfo{end+1} = '• Improper transfer function (numerator order > denominator order)';
+                elseif rel_degree == 0
+                    diagnosticInfo{end+1} = '• Proper but not strictly proper transfer function';
+                end
+                
+                % Check for oscillatory modes
+                osc_poles = p(abs(imag(p)) > 0.1*abs(real(p)) & real(p) < 0);
+                if ~isempty(osc_poles)
+                    diagnosticInfo{end+1} = sprintf('• System has %d oscillatory mode(s)', length(osc_poles)/2);
+                end
+                
+                % Check for poorly damped modes
+                poor_damp = false;
+                for i = 1:length(p)
+                    if real(p(i)) < 0 && imag(p(i)) ~= 0
+                        damp_ratio = -real(p(i))/abs(p(i));
+                        if damp_ratio < 0.2
+                            poor_damp = true;
+                            break;
+                        end
+                    end
+                end
+                if poor_damp
+                    diagnosticInfo{end+1} = '• System has poorly damped modes (damping ratio < 0.2)';
+                end
+                
+                % Special cases for auto-tuning failure
+                if ~isempty(unstable_poles) && length(unstable_poles) > 1
+                    diagnosticInfo{end+1} = '• Multiple unstable poles make classical tuning methods fail';
+                end
+                
+                if ~isempty(rhp_zeros) && ~isempty(unstable_poles)
+                    diagnosticInfo{end+1} = '• Combination of RHP zeros and poles creates fundamental limitations';
+                end
+                
+                if rel_degree <= 0 && ~isempty(unstable_poles)
+                    diagnosticInfo{end+1} = '• Improper/non-strictly proper transfer function with instability';
+                    diagnosticInfo{end+1} = '  This combination is particularly challenging for control design';
+                end
+                
+                % Add overall assessment
+                if ~isempty(unstable_poles) || rel_degree <= 0 || (~isempty(z) && ~isempty(rhp_zeros))
+                    diagnosticInfo{end+1} = '';
+                    diagnosticInfo{end+1} = 'OVERALL: This system has challenging characteristics';
+                    diagnosticInfo{end+1} = 'Consider using the advanced controller design methods';
+                end
+                
+            catch ME
+                % If analysis fails, return basic error info
+                diagnosticInfo{end+1} = 'Error during plant analysis:';
+                diagnosticInfo{end+1} = ['• ' ME.message];
+            end
+        end
     end
 
     % Helper function: Computes the controller transfer function based on controller type and inputs
@@ -903,6 +1220,65 @@ function K = get_user_controller(G)
                     error('Invalid input');
                 end
                 Ktemp = tf(numVec, denVec);
+            case 'Pole Placement'
+                % Extract parameters
+                bandwidth = convertValue(fields{1}.Value);
+                damping = convertValue(fields{2}.Value);
+                epsilon = convertValue(fields{3}.Value);
+                
+                % Set up options for designPolePlacement
+                options = struct('bandwidth', bandwidth, 'damping', damping, 'epsilon', epsilon);
+                
+                % Perform plant analysis
+                plantInfo = analyzePlant(G);
+                
+                try
+                    % Try to use designPolePlacement function if available
+                    if exist('designPolePlacement', 'file')
+                        [Ktemp, ~] = designPolePlacement(G, 'PID', options, plantInfo);
+                    else
+                        % If function not found, create a basic PID directly
+                        error('designPolePlacement function not found');
+                    end
+                catch ME
+                    % Log the error
+                    disp(['Pole placement error: ' ME.message]);
+                    disp('Creating fallback controller');
+                    
+                    % Create a conservative PID controller directly
+                    if plantInfo.isUnstable
+                        % For unstable plants with poles in the right half plane
+                        p = plantInfo.poles;
+                        unstable_poles = p(real(p) > 0);
+                        
+                        if ~isempty(unstable_poles)
+                            % Find the rightmost pole (most unstable)
+                            [~, idx] = max(real(unstable_poles));
+                            max_real_part = real(unstable_poles(idx));
+                            
+                            % Create a stabilizing controller
+                            Kp = max_real_part * 2;
+                            Ki = 0.01;
+                            Kd = Kp * 5;
+                        else
+                            % Default values if we can't determine unstable poles
+                            Kp = 1;
+                            Ki = 0.01;
+                            Kd = 5;
+                        end
+                    else
+                        % For stable plants, use conservative values
+                        Kp = 0.5;
+                        Ki = 0.05;
+                        Kd = 2;
+                    end
+                    
+                    % Create PID controller with derivative filtering
+                    Ktemp = tf([Kd, Kp, Ki], [epsilon*Kd, 1, 0]);
+                    
+                    % Issue a warning in the command window
+                    warning('Pole placement failed. Using fallback PID controller.');
+                end
             otherwise
                 error('Unknown controller type.');
         end
@@ -1004,6 +1380,9 @@ function K = get_user_controller(G)
             case 'Custom'
                 numHTML = 'numerator';
                 denHTML = 'denominator';
+            case 'Pole Placement'
+                numHTML = 'Controller based on desired poles';
+                denHTML = 'with bandwidth ω and damping ζ';
             otherwise
                 numHTML = '?';
                 denHTML = '?';
@@ -1021,5 +1400,87 @@ function K = get_user_controller(G)
             '<div class="den">', denHTML, '</div>', ...
             '</div>', ...
             '</body></html>'];
+    end
+
+    % Plant analysis function for the pole placement controller
+    function plantInfo = analyzePlant(G)
+        % ANALYZEPLANT Analyze plant characteristics to guide controller design
+        % Outputs a structure with plant information
+        
+        plantInfo = struct();
+        
+        % Get poles and zeros
+        plantInfo.poles = pole(G);
+        try
+            plantInfo.zeros = zero(G);
+        catch
+            plantInfo.zeros = [];
+        end
+        
+        % Check stability
+        plantInfo.isUnstable = any(real(plantInfo.poles) > 0);
+        
+        % Check for integrators (poles at the origin)
+        plantInfo.hasIntegrator = any(abs(plantInfo.poles) < 1e-6);
+        
+        % Check for non-minimum phase zeros (RHP zeros)
+        plantInfo.hasRHPZeros = any(real(plantInfo.zeros) > 0);
+        
+        % Check for time delay
+        [num, den] = tfdata(G, 'v');
+        % Pade approximations typically have alternating sign coefficients
+        if length(num) > 1 && all(sign(num(1:2:end)) ~= sign(num(2:2:end)))
+            plantInfo.hasDelay = true;
+        else
+            plantInfo.hasDelay = false;
+        end
+        
+        % Determine plant DC gain
+        try
+            plantInfo.dcGain = dcgain(G);
+        catch
+            % For plants with pure integrators
+            plantInfo.dcGain = Inf;
+        end
+        
+        % Check if high order (more than 2 states)
+        plantInfo.isHighOrder = length(plantInfo.poles) > 2;
+        
+        % Get step response characteristics if plant is stable
+        if ~plantInfo.isUnstable
+            try
+                t = linspace(0, 100, 1000);
+                [y, t] = step(G, t);
+                plantInfo.stepInfo = stepinfo(y, t);
+                plantInfo.stepResponse = struct('time', t, 'response', y);
+                
+                % Add FOPDT model fields with empty values
+                plantInfo.FOPDT = struct('L', NaN, 'T', NaN, 'K', NaN);
+            catch
+                plantInfo.stepInfo = [];
+                plantInfo.stepResponse = [];
+                plantInfo.FOPDT = struct('L', NaN, 'T', NaN, 'K', NaN);
+            end
+        else
+            plantInfo.stepInfo = [];
+            plantInfo.stepResponse = [];
+            plantInfo.FOPDT = struct('L', NaN, 'T', NaN, 'K', NaN);
+        end
+        
+        % For unstable plants, estimate stabilizing feedback
+        if plantInfo.isUnstable
+            % Simple estimate for stabilizing gain
+            p = plantInfo.poles;
+            [maxRealPart, idx] = max(real(p));
+            if maxRealPart <= 0
+                plantInfo.stabilizingGain = 0;
+            elseif imag(p(idx)) == 0
+                plantInfo.stabilizingGain = maxRealPart * 1.5;
+            else
+                plantInfo.stabilizingGain = maxRealPart * 2;
+            end
+        else
+            plantInfo.stabilizingGain = 0;
+        end
     end
 end
