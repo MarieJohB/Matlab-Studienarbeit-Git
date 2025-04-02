@@ -2,18 +2,13 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
 % DESIGNMUSYNTHESIS Controller design using robust µ-synthesis approach
 %
 % Implements an advanced µ-synthesis controller design for systems with uncertainty.
-% This is an extension of H-infinity that can handle structured uncertainty more 
-% effectively, making it particularly suitable for challenging and unstable plants.
+% This method has been enhanced to better handle high-order unstable systems and
+% to integrate state-space model information when available.
 %
 % Inputs:
-%   G        - Plant transfer function
+%   G        - Plant transfer function or state-space model
 %   structure - Controller structure ('P', 'PI', 'PD', 'PID')
-%   options   - Structure with design parameters:
-%     .bandwidth  - Desired bandwidth in rad/s (default: 1)
-%     .damping    - Desired damping ratio (default: 0.8)
-%     .epsilon    - Filter parameter for D-term (default: 0.1)
-%     .robustness - Robustness level ('Low', 'Medium', 'High') (default: 'Medium')
-%     .uncertainty - Uncertainty percentage (default: 20)
+%   options   - Structure with design parameters
 %   plantInfo - Structure with plant analysis information
 %
 % Outputs:
@@ -59,6 +54,30 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
     details = [details, sprintf('Robustness level: %s\n', robustness)];
     details = [details, sprintf('Uncertainty percentage: %.1f%%\n', uncertaintyPercent)];
     
+    % Check if input is state-space or transfer function
+    isStateSpace = isa(G, 'ss');
+    
+    % If state-space model is in the options, use it directly
+    if ~isStateSpace && isfield(options, 'stateSpace')
+        G_ss = options.stateSpace;
+        isStateSpace = true;
+        details = [details, 'Using state-space model from options.\n'];
+    elseif isStateSpace
+        G_ss = G;
+        details = [details, 'Using provided state-space model directly.\n'];
+    else
+        % Try to convert to state-space for more robust handling
+        try
+            G_ss = ss(G);
+            isStateSpace = true;
+            details = [details, 'Successfully converted to state-space representation.\n'];
+        catch ME
+            details = [details, sprintf('Could not convert to state-space: %s\n', ME.message)];
+            details = [details, 'Using transfer function approach.\n'];
+            G_ss = [];
+        end
+    end
+    
     % Check if Robust Control Toolbox is available
     hasRobustToolbox = exist('musyn', 'file') == 2;
     
@@ -72,18 +91,29 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
     details = [details, '\nSTEP 1: Creating uncertain plant model\n'];
     details = [details, '-----------------------------------\n'];
     
-    % Define uncertainty based on plant characteristics
-    try
-        % Convert to state space for modeling uncertainty
-        [A, B, C, D] = ssdata(G);
-        n = size(A, 1);
+    % Special handling for highly unstable systems
+    isHighlyUnstable = false;
+    if plantInfo.isUnstable
+        p = plantInfo.poles;
+        unstable_poles = p(real(p) > 0);
         
-        % Define uncertainty models based on plant characteristics
+        if max(real(unstable_poles)) > 5 || length(unstable_poles) > 1
+            isHighlyUnstable = true;
+            details = [details, 'System is highly unstable. Using specialized approach.\n'];
+        end
+    end
+    
+    try
+        % Define uncertainty based on plant characteristics
         if hasRobustToolbox
             details = [details, 'Creating structured uncertainty model...\n'];
             
             % Create nominal plant model
-            G_nom = G;
+            if isStateSpace
+                G_nom = G_ss;
+            else
+                G_nom = G;
+            end
             
             % Define uncertainty level based on robustness setting
             switch robustness
@@ -95,21 +125,24 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     delta_gain = 1.5 * uncertaintyPercent / 100;
             end
             
+            % For highly unstable systems, increase uncertainty level
+            if isHighlyUnstable
+                delta_gain = delta_gain * 1.5;
+                details = [details, 'Increased uncertainty level for highly unstable system.\n'];
+            end
+            
             % Create input and output uncertainty models
             if plantInfo.isUnstable
-                details = [details, 'Unstable plant: Using multiplicative input and output uncertainty models.\n'];
+                details = [details, 'Using multiplicative input and output uncertainty models for unstable plant.\n'];
                 
                 % For unstable plants, use more sophisticated uncertainty modeling
-                % Create input and output weights that reflect the uncertainty
+                Wout = makeweight(delta_gain/3, omega*1.5, delta_gain);
+                Win = makeweight(delta_gain/3, omega*1.5, delta_gain);
+                
+                % Add more uncertainty for non-minimum phase plants
                 if plantInfo.hasRHPZeros
-                    % Non-minimum phase + unstable: more conservative
-                    Wout = makeweight(delta_gain/2, omega*2, 2*delta_gain);
-                    Win = makeweight(delta_gain/2, omega*2, 2*delta_gain);
-                    details = [details, 'Added conservative uncertainty model for non-minimum phase unstable plant.\n'];
-                else
-                    % Just unstable
-                    Wout = makeweight(delta_gain/3, omega*1.5, delta_gain);
-                    Win = makeweight(delta_gain/3, omega*1.5, delta_gain);
+                    Wout = Wout * 1.2;
+                    details = [details, 'Increased uncertainty for non-minimum phase behavior.\n'];
                 end
                 
                 % Create uncertain plant
@@ -120,16 +153,16 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 
             else
                 % For stable plants, simpler uncertainty model is sufficient
-                details = [details, 'Stable plant: Using multiplicative input uncertainty model.\n'];
+                details = [details, 'Using multiplicative input uncertainty model for stable plant.\n'];
                 
                 % Create input uncertainty weight
+                Win = makeweight(delta_gain/4, omega, delta_gain/2);
+                
+                % Add more uncertainty for non-minimum phase plants
                 if plantInfo.hasRHPZeros
-                    % Non-minimum phase: more conservative
-                    Win = makeweight(delta_gain/3, omega*1.5, delta_gain);
-                    details = [details, 'Using conservative uncertainty model for non-minimum phase plant.\n'];
-                else
-                    Win = makeweight(delta_gain/4, omega, delta_gain/2);
-                }
+                    Win = Win * 1.2;
+                    details = [details, 'Increased uncertainty for non-minimum phase behavior.\n'];
+                end
                 
                 % Create uncertain plant
                 Delta_in = ultidyn('Delta_in', [1 1], 'Bound', 1);
@@ -150,36 +183,40 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     delta_gain = delta_gain * 1.5;  % More conservative
             end
             
+            % For highly unstable systems, increase uncertainty level
+            if isHighlyUnstable
+                delta_gain = delta_gain * 1.5;
+                details = [details, 'Increased uncertainty level for highly unstable system.\n'];
+            end
+            
             % Create appropriate frequency-dependent weights
             if plantInfo.isUnstable
                 % For unstable plants, more sophisticated weighting
-                if plantInfo.hasRHPZeros
-                    % Non-minimum phase + unstable: more conservative
-                    Wout = tf([delta_gain/2, delta_gain*omega*2], [1, omega*2/delta_gain/2]);
-                    Win = tf([delta_gain/2, delta_gain*omega*2], [1, omega*2/delta_gain/2]);
-                    details = [details, 'Added conservative uncertainty model for non-minimum phase unstable plant.\n'];
-                else
-                    % Just unstable
-                    Wout = tf([delta_gain/3, delta_gain*omega*1.5], [1, omega*1.5/delta_gain/3]);
-                    Win = tf([delta_gain/3, delta_gain*omega*1.5], [1, omega*1.5/delta_gain/3]);
-                end
+                Wout = tf([delta_gain/3, delta_gain*omega*1.5], [1, omega*1.5/delta_gain/3]);
+                Win = tf([delta_gain/3, delta_gain*omega*1.5], [1, omega*1.5/delta_gain/3]);
                 
-                % No need to create actual uncertain plant here as we'll use these weights directly
-                % in the generalized plant for D-K iteration
+                % Add more uncertainty for non-minimum phase plants
+                if plantInfo.hasRHPZeros
+                    Wout = Wout * 1.2;
+                    details = [details, 'Increased uncertainty for non-minimum phase behavior.\n'];
+                end
             else
                 % For stable plants
+                Win = tf([delta_gain/4, delta_gain*omega/2], [1, omega/delta_gain/4]);
+                Wout = tf(0.01, 1);  % Minimal output uncertainty for stable plants
+                
+                % Add more uncertainty for non-minimum phase plants
                 if plantInfo.hasRHPZeros
-                    % Non-minimum phase: more conservative
-                    Win = tf([delta_gain/3, delta_gain*omega*1.5], [1, omega*1.5/delta_gain/3]);
-                    Wout = tf(0.01, 1);  % Minimal output uncertainty for stable plants
-                    details = [details, 'Using conservative uncertainty model for non-minimum phase plant.\n'];
-                else
-                    Win = tf([delta_gain/4, delta_gain*omega/2], [1, omega/delta_gain/4]);
-                    Wout = tf(0.01, 1);
+                    Win = Win * 1.2;
+                    details = [details, 'Increased uncertainty for non-minimum phase behavior.\n'];
                 end
             end
             
-            G_unc = G;  % Just use nominal plant, weights will be used in generalized plant
+            if isStateSpace
+                G_unc = G_ss;  % Use state-space model
+            else
+                G_unc = G;  % Use transfer function model
+            end
         end
         
     catch ME
@@ -195,7 +232,11 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         % Simple scalar output uncertainty
         Wout = tf(delta_gain/10, 1);
         
-        G_unc = G;  % Use nominal plant
+        if isStateSpace
+            G_unc = G_ss;
+        else
+            G_unc = G;
+        end
     end
     
     % Step 2: Create generalized plant P for synthesis
@@ -258,18 +299,23 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         if plantInfo.isUnstable
             % For unstable plants, allow more control effort at critical frequencies
             p = plantInfo.poles;
-            unstable_p = p(real(p) > 0);
+            unstable_poles = p(real(p) > 0);
             
-            if ~isempty(unstable_p)
-                fastest_unstable = max(abs(unstable_p));
+            if ~isempty(unstable_poles)
+                fastest_unstable = max(abs(unstable_poles));
                 Wu = Wu * tf([1, fastest_unstable*2], [1, fastest_unstable/2]);
                 details = [details, sprintf('Adjusted control effort weight around unstable pole frequencies (%.3f rad/s).\n', fastest_unstable)];
+            end
+            
+            % For highly unstable systems, allow even more control effort
+            if isHighlyUnstable
+                Wu = Wu / 2;
+                details = [details, 'Allowed more control effort for highly unstable system.\n'];
             end
         end
         
         % Weight on complementary sensitivity function (T = GK/(1+GK))
         % Ensures robustness to unmodeled dynamics and noise rejection
-        % Higher robustness requires more roll-off (smaller T) at high frequencies
         switch robustness
             case 'Low'
                 % Less high-frequency roll-off
@@ -307,9 +353,10 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         details = [details, sprintf('Robustness weight Wt: %s\n', char(Wt))];
         
         if hasRobustToolbox
-            % Create generalized plant for mu-synthesis
+            % Create generalized plant for mu-synthesis with special handling for unstable plants
             if plantInfo.isUnstable && plantInfo.hasRHPZeros
-                % More complex interconnection for challenging plants
+                details = [details, 'Using specialized interconnection for unstable non-minimum phase plant.\n'];
+                
                 systemnames = 'G_unc Ws Wu Wt';
                 inputvar = '[r; d; n; u]';
                 outputvar = '[Ws; Wu; Wt; r-G_unc]';
@@ -318,62 +365,36 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 input_to_Wu = '[u]';
                 input_to_Wt = '[G_unc]';
                 
-                P = sysic;
+                try
+                    P = sysic;
+                catch ME
+                    details = [details, sprintf('sysic failed: %s\n', ME.message)];
+                    
+                    if isStateSpace
+                        P = augw(G_ss, Ws, Wu, Wt);
+                    else
+                        P = augw(G, Ws, Wu, Wt);
+                    end
+                    
+                    details = [details, 'Using augw as fallback.\n'];
+                end
             else
                 % Standard mixed-sensitivity setup
-                systemnames = 'G_unc Ws Wu Wt';
-                inputvar = '[r; d; n; u]';
-                outputvar = '[Ws; Wu; Wt; r-G_unc]';
-                input_to_G_unc = '[u]';
-                input_to_Ws = '[r-G_unc]';
-                input_to_Wu = '[u]';
-                input_to_Wt = '[G_unc]';
-                
-                P = sysic;
+                if isStateSpace
+                    P = augw(G_ss, Ws, Wu, Wt);
+                else
+                    P = augw(G_unc, Ws, Wu, Wt);
+                end
             end
         else
             % Manual creation of generalized plant without Robust Control Toolbox
             details = [details, 'Creating manual generalized plant for D-K iteration.\n'];
             
-            % Convert all components to state-space for manual assembly
-            [A_G, B_G, C_G, D_G] = ssdata(G);
-            [A_Ws, B_Ws, C_Ws, D_Ws] = ssdata(Ws);
-            [A_Wu, B_Wu, C_Wu, D_Wu] = ssdata(Wu);
-            [A_Wt, B_Wt, C_Wt, D_Wt] = ssdata(Wt);
-            
-            % Extract dimensions
-            n_G = size(A_G, 1);
-            n_Ws = size(A_Ws, 1);
-            n_Wu = size(A_Wu, 1);
-            n_Wt = size(A_Wt, 1);
-            
-            % Create augmented state-space matrices
-            A_P = blkdiag(A_G, A_Ws, A_Wu, A_Wt);
-            
-            % Input connections [r; d; n; u]
-            B_P = [zeros(n_G, 3), B_G;  % G only connects to u
-                   B_Ws, zeros(n_Ws, 3);  % Ws connects to error
-                   zeros(n_Wu, 3), B_Wu;  % Wu connects to u
-                   zeros(n_Wt, 3), zeros(n_Wt, 1)];  % Wt connects to G output
-            
-            % Modify for correct interconnections
-            A_P(n_G+1:n_G+n_Ws, 1:n_G) = B_Ws * -C_G;  % Ws input from error
-            A_P(n_G+n_Ws+n_Wu+1:end, 1:n_G) = B_Wt * C_G;  % Wt input from G output
-            
-            % Output connections [Ws; Wu; Wt; r-G]
-            C_P = [zeros(1, n_G), C_Ws, zeros(1, n_Wu), zeros(1, n_Wt);
-                   zeros(1, n_G), zeros(1, n_Ws), C_Wu, zeros(1, n_Wt);
-                   zeros(1, n_G), zeros(1, n_Ws), zeros(1, n_Wu), C_Wt;
-                   -C_G, zeros(1, n_Ws), zeros(1, n_Wu), zeros(1, n_Wt)];
-            
-            % Feedthrough matrix
-            D_P = [0, 0, 0, D_Ws*D_G;
-                   0, 0, 0, D_Wu;
-                   0, 0, 0, D_Wt*D_G;
-                   1, 1, 1, -D_G];
-            
-            % Create the generalized plant
-            P = ss(A_P, B_P, C_P, D_P);
+            if isStateSpace
+                P = augw(G_ss, Ws, Wu, Wt);
+            else
+                P = augw(G, Ws, Wu, Wt);
+            end
         end
     catch ME
         details = [details, sprintf('Error creating generalized plant: %s\n', ME.message)];
@@ -386,7 +407,11 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         Wt = tf([1, omega], [0.1, omega*5]);  % Complementary sensitivity
         
         % Use loopsyn for simple plant creation
-        P = augw(G, Ws, Wu, Wt);
+        if isStateSpace
+            P = augw(G_ss, Ws, Wu, Wt);
+        else
+            P = augw(G, Ws, Wu, Wt);
+        end
     end
     
     % Step 3: Perform mu-synthesis or D-K iteration
@@ -402,6 +427,12 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
             opt = musynOptions;
             opt.MaxIter = 5;
             
+            % For highly unstable systems, adjust options
+            if isHighlyUnstable
+                opt.MaxIter = 8;  % More iterations
+                details = [details, 'Increased maximum iterations for highly unstable system.\n'];
+            end
+            
             % Perform mu-synthesis
             [K_mu, CL, mubnds] = musyn(P, 4, 1, opt);
             
@@ -411,73 +442,171 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
             % Use the resulting controller
             K_robust = K_mu;
         else
-            % Implement manual D-K iteration
+            % Implement manual D-K iteration approximation
             details = [details, 'Performing manual D-K iteration approximation...\n'];
             
-            % We'll use mixed-sensitivity H-infinity design as approximation
-            % to the D-K iteration steps
-            
             % Step 1: Initial H-infinity design
-            [K1, CL, gamma] = hinfsyn(P, 1, 1);
-            details = [details, sprintf('Initial H-infinity design complete with gamma = %.4f\n', gamma)];
+            try
+                [K1, CL, gamma] = hinfsyn(P, 1, 1);
+                details = [details, sprintf('Initial H-infinity design complete with gamma = %.4f\n', gamma)];
+            catch ME
+                details = [details, sprintf('Initial H-infinity design failed: %s\n', ME.message)];
+                details = [details, 'Using loopsyn as fallback for initial design.\n'];
+                
+                if isStateSpace
+                    K1 = loopsyn(G_ss, Ws);
+                else
+                    K1 = loopsyn(G, Ws);
+                end
+                
+                gamma = NaN;
+            end
             
             % Step 2: Analyze and adjust weights
             % We'll simulate D-K iteration by adjusting weights and redesigning
-            
-            % Create two more iterations with adjusted weights
             try
                 % Extract frequency response of initial controller
                 w = logspace(-2, log10(omega*20), 100);
-                mag = sigma(CL, w);
-                mag = squeeze(mag);
                 
-                % Find peak frequency
-                [peak_mag, idx] = max(mag);
-                peak_freq = w(idx);
-                
-                details = [details, sprintf('Peak magnitude %.4f at frequency %.4f rad/s\n', peak_mag, peak_freq)];
-                
-                % Adjust weights to focus on critical frequencies
-                Ws_adj = Ws * tf([1, peak_freq*0.5], [1, peak_freq*2]);
-                Wt_adj = Wt * tf([1, peak_freq*0.5], [1, peak_freq*2]);
+                try
+                    if exist('CL', 'var')
+                        mag = sigma(CL, w);
+                    else
+                        if isStateSpace
+                            mag = sigma(feedback(G_ss*K1, 1), w);
+                        else
+                            mag = sigma(feedback(G*K1, 1), w);
+                        end
+                    end
+                    
+                    mag = squeeze(mag);
+                    
+                    % Find peak frequency
+                    [peak_mag, idx] = max(mag);
+                    peak_freq = w(idx);
+                    
+                    details = [details, sprintf('Peak magnitude %.4f at frequency %.4f rad/s\n', peak_mag, peak_freq)];
+                    
+                    % Adjust weights to focus on critical frequencies
+                    Ws_adj = Ws * tf([1, peak_freq*0.5], [1, peak_freq*2]);
+                    Wt_adj = Wt * tf([1, peak_freq*0.5], [1, peak_freq*2]);
+                catch
+                    % If analysis fails, use simpler adjustment
+                    Ws_adj = Ws * 1.2;
+                    Wt_adj = Wt * 1.2;
+                    details = [details, 'Using simple weight scaling for second iteration.\n'];
+                end
                 
                 % Create adjusted plant
-                P_adj = augw(G, Ws_adj, Wu, Wt_adj);
+                if isStateSpace
+                    P_adj = augw(G_ss, Ws_adj, Wu, Wt_adj);
+                else
+                    P_adj = augw(G, Ws_adj, Wu, Wt_adj);
+                end
                 
                 % Second iteration
-                [K2, CL2, gamma2] = hinfsyn(P_adj, 1, 1);
-                details = [details, sprintf('Second iteration complete with gamma = %.4f\n', gamma2)];
+                try
+                    [K2, CL2, gamma2] = hinfsyn(P_adj, 1, 1);
+                    details = [details, sprintf('Second iteration complete with gamma = %.4f\n', gamma2)];
+                catch
+                    details = [details, 'Second iteration failed. Using loopsyn as fallback.\n'];
+                    
+                    if isStateSpace
+                        K2 = loopsyn(G_ss, Ws_adj);
+                    else
+                        K2 = loopsyn(G, Ws_adj);
+                    end
+                    
+                    gamma2 = NaN;
+                end
                 
                 % Third iteration with further adjustment
-                if gamma2 < gamma
-                    % If improvement, continue in same direction
-                    Ws_adj2 = Ws_adj * tf([1, peak_freq*0.2], [1, peak_freq*5]);
-                    Wt_adj2 = Wt_adj * tf([1, peak_freq*0.2], [1, peak_freq*5]);
+                if isnan(gamma) || isnan(gamma2) || gamma2 < gamma
+                    % If improvement or one failed, continue in same direction
+                    Ws_adj2 = Ws_adj * tf([1, omega*0.2], [1, omega*5]);
+                    Wt_adj2 = Wt_adj * tf([1, omega*0.2], [1, omega*5]);
                 else
                     % If no improvement, try different approach
                     Ws_adj2 = Ws * tf([1, omega*0.5], [1, omega*5]);
                     Wt_adj2 = Wt * tf([1, omega*2], [1, omega*0.5]);
-                }
+                end
                 
-                P_adj2 = augw(G, Ws_adj2, Wu, Wt_adj2);
-                
-                [K3, CL3, gamma3] = hinfsyn(P_adj2, 1, 1);
-                details = [details, sprintf('Third iteration complete with gamma = %.4f\n', gamma3)];
-                
-                % Select best controller based on gamma
-                if gamma3 <= min(gamma, gamma2)
-                    K_robust = K3;
-                    details = [details, 'Using controller from third iteration.\n'];
-                elseif gamma2 <= min(gamma, gamma3)
-                    K_robust = K2;
-                    details = [details, 'Using controller from second iteration.\n'];
+                if isStateSpace
+                    P_adj2 = augw(G_ss, Ws_adj2, Wu, Wt_adj2);
                 else
-                    K_robust = K1;
-                    details = [details, 'Using controller from first iteration.\n'];
+                    P_adj2 = augw(G, Ws_adj2, Wu, Wt_adj2);
+                end
+                
+                try
+                    [K3, CL3, gamma3] = hinfsyn(P_adj2, 1, 1);
+                    details = [details, sprintf('Third iteration complete with gamma = %.4f\n', gamma3)];
+                catch
+                    details = [details, 'Third iteration failed. Using loopsyn as fallback.\n'];
+                    
+                    if isStateSpace
+                        K3 = loopsyn(G_ss, Ws_adj2);
+                    else
+                        K3 = loopsyn(G, Ws_adj2);
+                    end
+                    
+                    gamma3 = NaN;
+                end
+                
+                % Select best controller based on performance
+                % Check closed-loop stability first
+                controllers = {K1, K2, K3};
+                stabilities = zeros(1, 3);
+                scores = zeros(1, 3);
+                
+                for i = 1:3
+                    try
+                        if isStateSpace
+                            cl = feedback(G_ss*controllers{i}, 1);
+                        else
+                            cl = feedback(G*controllers{i}, 1);
+                        end
+                        
+                        % Check if stable
+                        if all(real(pole(cl)) < 0)
+                            stabilities(i) = 1;
+                            
+                            % Calculate a score based on frequency response
+                            try
+                                [mag_s, ~] = bode(cl, w);
+                                mag_s = squeeze(mag_s);
+                                
+                                % Score based on peak and low-frequency performance
+                                peak = max(mag_s);
+                                low_freq = mag_s(1);
+                                
+                                scores(i) = 1/(peak * low_freq);
+                            catch
+                                % If frequency analysis fails, give a positive but lower score
+                                scores(i) = 1;
+                            end
+                        end
+                    catch
+                        % If analysis fails, mark as unstable
+                        stabilities(i) = 0;
+                        scores(i) = 0;
+                    end
+                end
+                
+                % Choose the best stable controller
+                if any(stabilities)
+                    % Get the best among stable controllers
+                    [~, best_idx] = max(scores .* stabilities);
+                    K_robust = controllers{best_idx};
+                    details = [details, sprintf('Using controller from iteration %d based on stability and performance.\n', best_idx)];
+                else
+                    % If none are stable, return to pre-stabilization approach
+                    details = [details, 'No stable controllers found. Using pre-stabilization approach.\n'];
+                    [K_robust, ~] = preStabilize(G, plantInfo);
                 end
             catch ME2
-                details = [details, sprintf('Error in iteration: %s\n', ME2.message)];
-                details = [details, 'Using controller from initial H-infinity design.\n'];
+                details = [details, sprintf('D-K iteration process failed: %s\n', ME2.message)];
+                details = [details, 'Using initial H-infinity controller as fallback.\n'];
+                
                 K_robust = K1;
             end
         end
@@ -511,13 +640,19 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 % Reduce order
                 K_red = reduce(K_bal, keep_states);
                 
-                details = [details, sprintf('Reduced controller order from %d to %d\n', 
-                          controller_order, keep_states)];
+                details = [details, sprintf('Reduced controller order from %d to %d\n', controller_order, keep_states)];
                 
                 K_robust = K_red;
             else
                 details = [details, 'Controller already has low order. No reduction performed.\n'];
-            }
+            end
+            
+            % Verify stability after reduction
+            k_poles = pole(K_robust);
+            if any(real(k_poles) > 0)
+                details = [details, 'Warning: Reduced controller has unstable poles. Using original controller.\n'];
+                K_robust = K_bal;
+            end
         catch ME
             details = [details, sprintf('Order reduction failed: %s\n', ME.message)];
             details = [details, 'Continuing with original controller.\n'];
@@ -527,90 +662,30 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         details = [details, sprintf('Error in controller synthesis: %s\n', ME.message)];
         details = [details, 'Using fallback control design approach...\n'];
         
-        % Fallback to standard loop-shaping approach
-        % Adjust parameters based on robustness setting
-        switch robustness
-            case 'Low'
-                phaseMargin = 35;  % Lower phase margin for less robustness
-            case 'High'
-                phaseMargin = 60;  % Higher phase margin for more robustness
-            otherwise
-                phaseMargin = 45;  % Default phase margin
-        end
-        
-        % Use loop-shaping as fallback
-        [K_robust, loop_details] = designLoopShaping(G, structure, phaseMargin, omega, epsilon, plantInfo);
-        details = [details, loop_details];
-        
-        % Skip to the controller extraction step
-        if exist('K_robust', 'var')
-            % Success, continue with extraction
-        else
-            % If all else fails, create a very basic controller
-            details = [details, 'All synthesis methods failed. Creating basic controller.\n'];
+        % For unstable plants, try pre-stabilization
+        if plantInfo.isUnstable
+            details = [details, 'Using pre-stabilization approach for unstable plant.\n'];
             
-            if plantInfo.isUnstable
-                % For unstable plants, create a stabilizing controller
-                p = plantInfo.poles;
-                unstable_poles = p(real(p) > 0);
-                
-                if ~isempty(unstable_poles)
-                    % Simple stabilizing controller: place zeros at unstable poles
-                    K_num = 1;
-                    K_den = 1;
-                    
-                    for i = 1:length(unstable_poles)
-                        pole_i = unstable_poles(i);
-                        
-                        if imag(pole_i) ~= 0
-                            % Complex pole, need to include conjugate pair
-                            if i < length(unstable_poles) && abs(pole_i - conj(unstable_poles(i+1))) < 1e-6
-                                % Skip conjugate pair, we'll add both together
-                                continue;
-                            end
-                            
-                            % Add complex conjugate pair
-                            if imag(pole_i) > 0
-                                real_part = real(pole_i);
-                                imag_part = imag(pole_i);
-                                
-                                % Create (s - p)(s - p*)
-                                quad_term = [1, -2*real_part, real_part^2 + imag_part^2];
-                                
-                                % Reflect to LHP: (s + p)(s + p*)
-                                stable_quad = [1, 2*real_part, real_part^2 + imag_part^2];
-                                
-                                K_num = conv(K_num, quad_term);
-                                K_den = conv(K_den, stable_quad);
-                            end
-                        else
-                            % Real pole
-                            K_num = conv(K_num, [1, -pole_i]);
-                            K_den = conv(K_den, [1, abs(pole_i)]);
-                        end
-                    end
-                    
-                    % Create the basic controller
-                    K_robust = tf(K_num, K_den);
-                else
-                    % Simple P controller
-                    K_robust = tf(1, 1);
-                end
-            else
-                % For stable plants, use a simple controller based on structure
-                switch structure
-                    case 'P'
-                        K_robust = tf(1, 1);
-                    case 'PI'
-                        K_robust = tf([1, 0.1], [1, 0]);
-                    case 'PD'
-                        K_robust = tf([0.1, 1], [0.01, 1]);
-                    case 'PID'
-                        K_robust = tf([0.1, 1, 0.1], [0.01, 1, 0]);
-                    otherwise
-                        K_robust = tf(1, 1);
-                end
+            [K_robust, prestab_details] = preStabilize(G, plantInfo);
+            details = [details, '-- Pre-stabilization details --\n'];
+            details = [details, prestab_details];
+        else
+            % For stable plants, use loop-shaping approach
+            
+            % Adjust parameters based on robustness setting
+            switch robustness
+                case 'Low'
+                    phaseMargin = 35;  % Lower phase margin for less robustness
+                case 'High'
+                    phaseMargin = 60;  % Higher phase margin for more robustness
+                otherwise
+                    phaseMargin = 45;  % Default phase margin
             end
+            
+            % Use loop-shaping as fallback
+            [K_robust, loop_details] = designLoopShaping(G, structure, phaseMargin, omega, epsilon, plantInfo);
+            details = [details, '-- Loop-shaping details --\n'];
+            details = [details, loop_details];
         end
     end
     
@@ -639,14 +714,14 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         return;
     end
     
-    % Extract controller parameters using frequency response
+    % Extract controller parameters based on structure
     try
+        % Use frequency response for more robust parameter extraction
         w = logspace(-3, log10(omega*10), 200);
         [mag, phase] = bode(K_robust, w);
         mag = squeeze(mag);
         phase = squeeze(phase);
         
-        % Create controller based on requested structure
         switch structure
             case 'P'
                 % Extract proportional gain (at middle frequencies)
@@ -654,7 +729,7 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 Kp = mag(mid_idx);
                 
                 % Limit gain to reasonable values
-                Kp = min(max(Kp, 0.1), 100);
+                Kp = min(max(abs(Kp), 0.1), 100);
                 
                 K = tf(Kp, 1);
                 details = [details, sprintf('Extracted P controller: Kp = %.4f\n', Kp)];
@@ -668,30 +743,27 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 if has_integrator
                     details = [details, 'Detected integral action in synthesized controller.\n'];
                     
-                    % Extract gain at crossover frequency
-                    cross_idx = find(mag < 1, 1);
-                    if isempty(cross_idx)
-                        cross_idx = ceil(length(w)/2);
-                    end
-                    Kp = mag(cross_idx);
-                    
-                    % Find corner frequency where integral action starts
+                    % Find frequency where phase crosses -45 degrees
                     idx_45 = find(phase > -45, 1);
                     if isempty(idx_45)
                         idx_45 = 2;
                     end
                     w_i = w(idx_45);
                     
+                    % Extract proportional gain at mid-frequencies
+                    idx_mid = ceil(length(w)/2);
+                    Kp = mag(idx_mid);
+                    
                     % Calculate integral gain
                     Ki = Kp * w_i / 5;
                 else
-                    details = [details, 'No strong integral action detected. Adding appropriate integral term.\n'];
+                    details = [details, 'No clear integral action detected. Adding appropriate integral term.\n'];
                     
-                    % Extract gain at mid frequencies
-                    mid_idx = ceil(length(w)/2);
-                    Kp = mag(mid_idx);
+                    % Extract proportional gain
+                    idx_mid = ceil(length(w)/2);
+                    Kp = mag(idx_mid);
                     
-                    % Add integral action based on bandwidth
+                    % Add moderate integral action
                     Ki = Kp * omega / 10;
                     
                     if plantInfo.hasIntegrator
@@ -700,9 +772,20 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     end
                 end
                 
+                % Special handling for unstable systems
+                if plantInfo.isUnstable
+                    Ki = Ki / 5;
+                    details = [details, 'Reduced integral gain for unstable plant.\n'];
+                    
+                    if isHighlyUnstable
+                        Ki = Ki / 5;
+                        details = [details, 'Further reduced integral gain for highly unstable plant.\n'];
+                    end
+                end
+                
                 % Limit to reasonable values
-                Kp = min(max(Kp, 0.1), 100);
-                Ki = min(max(Ki, 0.01), 50);
+                Kp = min(max(abs(Kp), 0.1), 100);
+                Ki = min(max(abs(Ki), 0.01), 50);
                 
                 K = tf([Kp, Ki], [1, 0]);
                 details = [details, sprintf('Extracted PI controller: Kp = %.4f, Ki = %.4f\n', Kp, Ki)];
@@ -720,14 +803,18 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     [~, idx_max] = max(phase);
                     w_d = w(idx_max);
                     
-                    % Extract parameters
-                    Kp = mag(ceil(length(w)/2));  % Mid-frequency gain
+                    % Extract proportional gain at mid-frequencies
+                    idx_mid = ceil(length(w)/2);
+                    Kp = mag(idx_mid);
+                    
+                    % Calculate derivative gain
                     Kd = Kp / w_d;
                 else
                     details = [details, 'No strong derivative action detected. Adding appropriate derivative term.\n'];
                     
-                    % Extract gain
-                    Kp = mag(ceil(length(w)/2));
+                    % Extract proportional gain
+                    idx_mid = ceil(length(w)/2);
+                    Kp = mag(idx_mid);
                     
                     % Add derivative action based on bandwidth
                     Kd = Kp / omega;
@@ -739,8 +826,8 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                 end
                 
                 % Limit to reasonable values
-                Kp = min(max(Kp, 0.1), 100);
-                Kd = min(max(Kd, 0.01), 50);
+                Kp = min(max(abs(Kp), 0.1), 100);
+                Kd = min(max(abs(Kd), 0.01), 50);
                 
                 % Add filtering for derivative term
                 Td = Kd / Kp;
@@ -750,7 +837,7 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
             case 'PID'
                 % Extract PID parameters
                 
-                % Check for integral and derivative actions
+                % Check for both integral and derivative actions
                 has_integrator = (phase(1) < -45);
                 has_derivative = any(phase > 10);
                 
@@ -772,7 +859,7 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     Ki = Kp * w_i / 5;
                     Kd = Kp / w_d;
                 else
-                    details = [details, 'Full PID behavior not detected. Creating appropriate PID controller.\n'];
+                    details = [details, 'Full PID behavior not detected. Creating balanced PID controller.\n'];
                     
                     % Extract proportional gain
                     Kp = mag(ceil(length(w)/2));
@@ -792,10 +879,21 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                     end
                 end
                 
+                % Special handling for unstable systems
+                if plantInfo.isUnstable
+                    Ki = Ki / 5;
+                    details = [details, 'Reduced integral action for unstable plant.\n'];
+                    
+                    if isHighlyUnstable
+                        Ki = Ki / 5;
+                        details = [details, 'Further reduced integral gain for highly unstable plant.\n'];
+                    end
+                end
+                
                 % Limit to reasonable values
-                Kp = min(max(Kp, 0.1), 100);
-                Ki = min(max(Ki, 0.01), 50);
-                Kd = min(max(Kd, 0.01), 50);
+                Kp = min(max(abs(Kp), 0.1), 100);
+                Ki = min(max(abs(Ki), 0.01), 50);
+                Kd = min(max(abs(Kd), 0.01), 50);
                 
                 % Create PID controller with derivative filter
                 K = tf([Kd, Kp, Ki], [epsilon*Kd, 1, 0]);
@@ -827,21 +925,36 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
             switch structure
                 case 'P'
                     K = tf(K_gain, 1);
+                    details = [details, sprintf('Created basic P controller: Kp = %.4f\n', K_gain)];
                     
                 case 'PI'
                     Ki = K_gain * omega / 10;
+                    
                     if plantInfo.hasIntegrator
                         Ki = Ki / 2;
                     end
+                    
+                    if plantInfo.isUnstable
+                        Ki = Ki / 5;
+                        
+                        if isHighlyUnstable
+                            Ki = Ki / 5;
+                        end
+                    end
+                    
                     K = tf([K_gain, Ki], [1, 0]);
+                    details = [details, sprintf('Created basic PI controller: Kp = %.4f, Ki = %.4f\n', K_gain, Ki)];
                     
                 case 'PD'
                     Kd = K_gain / omega;
+                    
                     if plantInfo.hasRHPZeros
                         Kd = Kd / 2;
                     end
+                    
                     Td = Kd / K_gain;
                     K = tf([Kd, K_gain], [epsilon*Td, 1]);
+                    details = [details, sprintf('Created basic PD controller: Kp = %.4f, Kd = %.4f\n', K_gain, Kd)];
                     
                 case 'PID'
                     Ki = K_gain * omega / 10;
@@ -855,24 +968,42 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
                         Kd = Kd / 2;
                     end
                     
+                    if plantInfo.isUnstable
+                        Ki = Ki / 5;
+                        
+                        if isHighlyUnstable
+                            Ki = Ki / 5;
+                        end
+                    end
+                    
                     K = tf([Kd, K_gain, Ki], [epsilon*Kd, 1, 0]);
+                    details = [details, sprintf('Created basic PID controller: Kp = %.4f, Ki = %.4f, Kd = %.4f\n', K_gain, Ki, Kd)];
                     
                 otherwise
                     K = tf(K_gain, 1);
+                    details = [details, 'Using fallback P controller.\n'];
             end
-            
-            details = [details, 'Created controller using simplistic parameter extraction.\n'];
         catch
             % If everything fails, create a default controller
+            details = [details, 'Creating default safe controller.\n'];
+            
             switch structure
                 case 'P'
                     K = tf(1, 1);
                 case 'PI'
-                    K = tf([1, 0.1], [1, 0]);
+                    if plantInfo.isUnstable
+                        K = tf([1, 0.01], [1, 0]);
+                    else
+                        K = tf([1, 0.1], [1, 0]);
+                    end
                 case 'PD'
                     K = tf([0.1, 1], [epsilon*0.1, 1]);
                 case 'PID'
-                    K = tf([0.1, 1, 0.1], [epsilon*0.1, 1, 0]);
+                    if plantInfo.isUnstable
+                        K = tf([0.1, 1, 0.01], [epsilon*0.1, 1, 0]);
+                    else
+                        K = tf([0.1, 1, 0.1], [epsilon*0.1, 1, 0]);
+                    end
                 otherwise
                     K = tf(1, 1);
             end
@@ -889,10 +1020,10 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
         is_stable = all(real(cl_poles) < 0);
         
         if is_stable
-            details = [details, '\nFinal structured controller stabilizes the plant! Closed-loop poles:\n'];
+            details = [details, '\nFinal controller stabilizes the plant! Closed-loop poles:\n'];
         else
-            details = [details, '\nWARNING: Final structured controller does not stabilize the plant! Closed-loop poles:\n'];
-        }
+            details = [details, '\nWARNING: Final controller does not stabilize the plant! Closed-loop poles:\n'];
+        end
         
         for i = 1:length(cl_poles)
             if imag(cl_poles(i)) ~= 0
@@ -921,94 +1052,58 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
             end
             
             if ~found_stable
-                details = [details, 'WARNING: Could not stabilize system with derived controller.\n'];
+                details = [details, 'WARNING: Could not stabilize system by gain scaling.\n'];
                 
-                % Fallback to a completely different approach
-                if plantInfo.isUnstable
-                    details = [details, 'Creating backup stabilizing controller for unstable plant.\n'];
-                    
-                    % Create a simple stabilizing controller directly
-                    p = plantInfo.poles;
-                    unstable_p = p(real(p) > 0);
-                    
-                    if ~isempty(unstable_p)
-                        % Create stabilizing controller by placing zeros at unstable poles
-                        num = 1;
-                        den = 1;
+                % Try structure-specific modifications
+                details = [details, 'Attempting structure-specific modifications...\n'];
+                
+                switch structure
+                    case 'P'
+                        % For P controller, use an extremely conservative gain
+                        K = tf(0.01, 1);
                         
-                        for i = 1:length(unstable_p)
-                            pole_i = unstable_p(i);
-                            
-                            if imag(pole_i) ~= 0
-                                % Skip conjugate pairs, we'll handle them together
-                                if i < length(unstable_p) && abs(pole_i - conj(unstable_p(i+1))) < 1e-6
-                                    continue;
-                                end
-                                
-                                if imag(pole_i) > 0
-                                    real_part = real(pole_i);
-                                    imag_part = imag(pole_i);
-                                    
-                                    % Create zeros at unstable poles
-                                    num = conv(num, [1, -2*real_part, real_part^2 + imag_part^2]);
-                                    
-                                    % Create stable poles
-                                    den = conv(den, [1, 2*abs(real_part), abs(real_part)^2 + imag_part^2]);
-                                end
-                            else
-                                % Real pole
-                                num = conv(num, [1, -pole_i]);
-                                den = conv(den, [1, 2*abs(pole_i)]);
-                            end
-                        end
+                    case 'PI'
+                        % For PI, create a controller with minimal integral action
+                        K = tf([0.1, 0.001], [1, 0]);
                         
-                        % Create stabilizing controller
-                        K_stab = tf(0.1*num, den);
+                    case 'PD'
+                        % For PD, add more filtering and less derivative action
+                        K = tf([0.01, 0.1], [0.1, 1]);
                         
-                        % Check stability
-                        closed_loop_stab = feedback(G*K_stab, 1);
-                        if all(real(pole(closed_loop_stab)) < 0)
-                            K = K_stab;
-                            details = [details, 'Basic stabilizing controller created successfully.\n'];
-                            
-                            % Convert to requested structure if needed
-                            if strcmpi(structure, 'PID')
-                                % Create an approximate PID
-                                try
-                                    [num_stab, den_stab] = tfdata(K_stab, 'v');
-                                    Kp = 0.1;
-                                    Ki = 0.01;
-                                    Kd = 0.5;
-                                    K = tf([Kd, Kp, Ki], [epsilon*Kd, 1, 0]);
-                                    
-                                    % Make sure it's still stabilizing
-                                    if ~all(real(pole(feedback(G*K, 1))) < 0)
-                                        K = K_stab;  % Revert if not stable
-                                    end
-                                catch
-                                    K = K_stab;  // Keep original if conversion fails
-                                end
-                            end
-                        else
-                            details = [details, 'Even basic stabilizing controller failed. This system is exceptionally challenging.\n'];
-                        end
-                    end
+                    case 'PID'
+                        % For PID, create a very conservative controller
+                        K = tf([0.01, 0.1, 0.001], [0.1, 1, 0]);
+                end
+                
+                % Check if modifications helped
+                closed_loop_mod = feedback(G*K, 1);
+                is_stable_mod = all(real(pole(closed_loop_mod)) < 0);
+                
+                if is_stable_mod
+                    details = [details, 'Successfully stabilized with structure-specific modifications.\n'];
                 else
-                    // For stable plants, use a conservative controller for safety
-                    switch structure
-                        case 'P'
-                            K = tf(0.1, 1);
-                        case 'PI'
-                            K = tf([0.1, 0.01], [1, 0]);
-                        case 'PD'
-                            K = tf([0.05, 0.1], [0.01, 1]);
-                        case 'PID'
-                            K = tf([0.05, 0.1, 0.01], [0.01, 1, 0]);
-                        otherwise
-                            K = tf(0.1, 1);
-                    end
+                    details = [details, 'WARNING: All stabilization attempts failed. Try using pre-stabilization directly.\n'];
                     
-                    details = [details, 'Using very conservative controller parameters.\n'];
+                    % Try pre-stabilization as a last resort
+                    try
+                        [K_prestab, ~] = preStabilize(G, plantInfo);
+                        
+                        closed_loop_prestab = feedback(G*K_prestab, 1);
+                        if all(real(pole(closed_loop_prestab)) < 0)
+                            K = K_prestab;
+                            details = [details, 'Using pure pre-stabilization controller as final fallback.\n'];
+                        else
+                            details = [details, 'WARNING: Even pre-stabilization failed. Manual tuning required.\n'];
+                            
+                            % Use a minimal controller as last resort
+                            K = tf(0.001, 1);
+                        end
+                    catch
+                        details = [details, 'Error in pre-stabilization. Manual tuning required.\n'];
+                        
+                        % Use a minimal controller as last resort
+                        K = tf(0.001, 1);
+                    end
                 end
             end
         end
@@ -1027,46 +1122,4 @@ function [K, details] = designMuSynthesis(G, structure, options, plantInfo)
     end
     
     return;
-end
-
-% Helper function to create a formatted string with plant information
-function infoStr = getPlantInfoString(plantInfo)
-    % Initialize output string
-    infoStr = '';
-    
-    % Add stability information
-    if plantInfo.isUnstable
-        infoStr = [infoStr, 'Unstable, '];
-    else
-        infoStr = [infoStr, 'Stable, '];
-    end
-    
-    % Add integrator information
-    if plantInfo.hasIntegrator
-        infoStr = [infoStr, 'Has integrator, '];
-    end
-    
-    % Add RHP zeros information
-    if plantInfo.hasRHPZeros
-        infoStr = [infoStr, 'Non-minimum phase, '];
-    end
-    
-    % Add delay information
-    if plantInfo.hasDelay
-        infoStr = [infoStr, 'Has delay, '];
-    end
-    
-    % Add order information
-    if plantInfo.isHighOrder
-        infoStr = [infoStr, 'High-order, '];
-    else
-        infoStr = [infoStr, 'Low-order, '];
-    end
-    
-    % Add DC gain if available
-    if ~isnan(plantInfo.dcGain) && ~isinf(plantInfo.dcGain)
-        infoStr = [infoStr, sprintf('DC gain=%.3g', plantInfo.dcGain)];
-    else
-        infoStr = [infoStr, 'Infinite DC gain'];
-    end
 end

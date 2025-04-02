@@ -41,7 +41,7 @@ function K = get_user_controller(G)
     
     % Create buttons for standard controllers in a grid layout
     % CHANGE: Removed the advanced methods from this grid
-    controllers = {'P','PI','PD','PID','PT1','PIT1','I2','PIDT1','Custom','Pole Placement'};
+    controllers = {'P','PI','PD','PID','PT1','PIT1','I2','PIDT1','Custom'};
     grid_width = 3;
     grid_height = 4;  % Enough for 10 buttons (3 columns * 4 rows = 12 max)
     button_width = 160;
@@ -55,7 +55,7 @@ function K = get_user_controller(G)
     
     % Calculate starting position to center the grid
     start_x = (680 - total_width) / 2;
-    start_y = 260; % Increased starting height position
+    start_y = 185; % Change starting height position
     
     % Create buttons in grid layout
     for i = 1:length(controllers)
@@ -437,7 +437,8 @@ function K = get_user_controller(G)
             'Enhanced State Feedback', isApplicable(G, 'Enhanced State Feedback'),
             'Pre-stabilization', isApplicable(G, 'Pre-stabilization'),
             'Youla-Kucera Parameterization', isApplicable(G, 'Youla-Kucera Parameterization'),
-            'Robust µ-synthesis', isApplicable(G, 'Robust µ-synthesis')
+            'Robust µ-synthesis', isApplicable(G, 'Robust µ-synthesis'),
+            'Pole Placement', isApplicable(G, 'Pole-Placement')
         };
         
         % CHANGE: Improved layout for methods to ensure all are visible
@@ -539,11 +540,11 @@ function K = get_user_controller(G)
         
         % CHANGE: Fixed damping ratio position - now properly inside the panel
         dampingLabel = uilabel(performancePanel, 'Text', 'Damping Ratio:', ...
-            'Position', [20, 110, 100, 22], 'FontSize', 12);
+        'Position', [20, 110, 150, 22], 'FontSize', 12);
         dampingField = uieditfield(performancePanel, 'numeric', ...
-            'Position', [170, 110, 100, 22], 'Value', 0.8, ...
-            'Limits', [0.1, 2.0], 'LowerLimitInclusive', true, 'UpperLimitInclusive', true, ...
-            'FontSize', 12);
+        'Position', [170, 110, 100, 22], 'Value', 0.8, ...
+        'Limits', [0.1, 2.0], 'LowerLimitInclusive', true, 'UpperLimitInclusive', true, ...
+        'FontSize', 12);
         
         % Add a "What's a good score?" button with information
         scoreInfoBtn = uibutton(performancePanel, 'Text', 'Score Info', ...
@@ -789,7 +790,8 @@ function K = get_user_controller(G)
             options.overshoot = overshootField.Value;
             options.goal = goalDropdown.Value;
             options.damping = dampingField.Value;  % Added for pole placement
-            
+            options.userSetDamping = true; % Flag to indicate user-set damping
+
             % Controller structure
             structure = structureDropdown.Value;
             

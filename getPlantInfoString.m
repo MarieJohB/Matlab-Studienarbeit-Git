@@ -1,6 +1,4 @@
 function infoStr = getPlantInfoString(plantInfo)
-    % GETPLANTINFOSTRING Creates a formatted string with plant characteristics
-    
     % Initialize output string
     infoStr = '';
     

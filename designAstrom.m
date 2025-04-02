@@ -1,168 +1,159 @@
-function [K, details] = designAstrom(G, structure, epsilon, plantInfo)
-    % Enhanced Åström method with improved parameter selection and stability handling
-    
+function [K, details] = designAstrom(G, structure, options, plantInfo)
+    % Enhanced Astrom method with pre-stabilization for unstable plants
     details = sprintf('Plant Analysis: %s\n', getPlantInfoString(plantInfo));
     
-    % For unstable plants, pre-stabilize
+    % Extract needed parameters
+    epsilon = options.epsilon;
+    
+    % For unstable systems, first pre-stabilize
     if plantInfo.isUnstable
-        details = [details, 'Plant is unstable. Using pre-stabilization.\n'];
-        K_stab = preStabilize(G, plantInfo);
-        G_stab = feedback(G, K_stab);
+        details = [details, 'Plant is unstable. Using pre-stabilization before Astrom method.\n'];
         
-        % Use stabilized plant for analysis
-        t = linspace(0, 100, 1000);
-        [y, t] = step(G_stab, t);
+        % Create a robust stabilizing controller for the unstable plant
+        K_stab = designRobustStabilizingController(G, plantInfo);
+        
+        % Create a stabilized version of the plant
+        G_stab = feedback(G * K_stab, 1);
+        G_for_design = G_stab;
+        isPreStabilized = true;
     else
-        G_stab = G;
+        G_for_design = G;
+        isPreStabilized = false;
+    end
+    
+    % Apply the modified Astrom method
+    try
+        % Calculate critical gain and frequency
+        Ku = 0;
+        Tu = 0;
         
-        % Get step response
-        if ~isempty(plantInfo.stepResponse)
-            t = plantInfo.stepResponse.time;
-            y = plantInfo.stepResponse.response;
+        % Use frequency response method to find critical gain
+        w = logspace(-3, 3, 1000);
+        [mag, phase] = bode(G_for_design, w);
+        mag = squeeze(mag);
+        phase = squeeze(phase);
+        
+        % Find where phase is -180 degrees
+        phase_cross_idx = find(phase <= -180, 1);
+        
+        if ~isempty(phase_cross_idx)
+            % Find critical gain and period
+            Ku = 1 / mag(phase_cross_idx);
+            critical_freq = w(phase_cross_idx);
+            Tu = 2 * pi / critical_freq;
+            
+            details = [details, sprintf('Critical gain Ku = %.4f\n', Ku)];
+            details = [details, sprintf('Critical period Tu = %.4f s\n', Tu)];
         else
-            t = linspace(0, 100, 1000);
-            [y, t] = step(G, t);
+            % If phase never crosses -180, use approximate method
+            [min_phase_val, min_phase_idx] = min(phase);
+            phase_margin = 180 + min_phase_val;
+            
+            if phase_margin < 90
+                % Use phase margin to estimate critical gain
+                Ku = 1 / mag(min_phase_idx) * (1 + sind(phase_margin)) / sind(phase_margin);
+                critical_freq = w(min_phase_idx);
+                Tu = 2 * pi / critical_freq;
+                
+                details = [details, sprintf('Estimated critical gain Ku = %.4f (from phase margin)\n', Ku)];
+                details = [details, sprintf('Estimated critical period Tu = %.4f s\n', Tu)];
+            else
+                error('System does not have sufficient phase lag for Astrom method');
+            end
         end
-    end
-    
-    % Find final value
-    y_final = y(end);
-    
-    if abs(y_final) < 1e-6
-        % No steady-state gain - try using plant info
-        if ~isnan(plantInfo.FOPDT.K)
-            y_final = plantInfo.FOPDT.K;
-            details = [details, 'Using estimated steady-state gain from FOPDT model.\n'];
+        
+        % Calculate controller parameters using Astrom's improved rules
+        % (Modified ZN rules with better robustness)
+        switch structure
+            case 'P'
+                Kp = 0.33 * Ku;  % More conservative than ZN
+                K_astrom = tf(Kp, 1);
+                details = [details, sprintf('P controller: Kp = %.4f\n', Kp)];
+                
+            case 'PI'
+                Kp = 0.33 * Ku;  % More conservative than ZN
+                Ti = 0.9 * Tu;  % Slightly modified from ZN
+                Ki = Kp / Ti;
+                K_astrom = tf([Kp, Ki], [1, 0]);
+                details = [details, sprintf('PI controller: Kp = %.4f, Ti = %.4f, Ki = %.4f\n', Kp, Ti, Ki)];
+                
+            case 'PD'
+                Kp = 0.67 * Ku;  % More conservative than ZN
+                Td = Tu / 7;     % Modified from ZN
+                Kd = Kp * Td;
+                K_astrom = tf([Kd, Kp], [epsilon*Td, 1]);
+                details = [details, sprintf('PD controller: Kp = %.4f, Td = %.4f, Kd = %.4f\n', Kp, Td, Kd)];
+                
+            case 'PID'
+                Kp = 0.45 * Ku;  % More conservative than ZN
+                Ti = 0.85 * Tu;  % Slightly modified from ZN
+                Td = 0.16 * Tu;  % Slightly modified from ZN
+                Ki = Kp / Ti;
+                Kd = Kp * Td;
+                K_astrom = tf([Kd, Kp, Ki], [epsilon*Td, 1, 0]);
+                details = [details, sprintf('PID controller: Kp = %.4f, Ti = %.4f, Td = %.4f, Ki = %.4f, Kd = %.4f\n', ...
+                          Kp, Ti, Td, Ki, Kd)];
+                
+            otherwise
+                error('Unsupported controller structure for Astrom method');
+        end
+        
+        % Adjust for plant characteristics
+        if plantInfo.hasRHPZeros
+            details = [details, 'Non-minimum phase behavior detected. Reducing controller gains for stability.\n'];
+            [num, den] = tfdata(K_astrom, 'v');
+            K_astrom = tf(num * 0.8, den);  % Reduce gain by 20%
+        end
+        
+        % For pre-stabilized systems, combine with the stabilizing controller
+        if isPreStabilized
+            K_combined = series(K_astrom, K_stab);
+            
+            try
+                % Simplify the combined controller if possible
+                K_combined = minreal(K_combined, 0.01);
+                details = [details, 'Successfully simplified the combined controller.\n'];
+            catch
+                details = [details, 'Could not simplify the combined controller.\n'];
+            end
+            
+            K = K_combined;
+            details = [details, 'Combined with pre-stabilizing controller for final result.\n'];
         else
-            error('System does not have a finite DC gain. Not suitable for Åström method.');
-        end
-    end
-    
-    % Static gain
-    Ks = y_final;
-    
-    % Use FOPDT parameters if available, otherwise estimate them
-    if ~isnan(plantInfo.FOPDT.L) && ~isnan(plantInfo.FOPDT.T)
-        L = plantInfo.FOPDT.L;
-        T = plantInfo.FOPDT.T;
-    else
-        % Estimate time constant and delay
-        y_norm = y / y_final;
-        
-        % Find 63.2% point for T
-        idx_63 = find(y_norm >= 0.632, 1);
-        
-        if isempty(idx_63)
-            error('Could not determine time constant. The plant may not be suitable for the Åström method.');
+            K = K_astrom;
         end
         
-        % Estimate delay by comparing with first-order model plus delay
-        idx_10 = find(y_norm >= 0.1, 1);
-        if isempty(idx_10)
-            L = 0.1;  % Default value
+    catch ME
+        details = [details, sprintf('Error in Astrom method: %s\n', ME.message)];
+        
+        % Fallback to conservative controller
+        if isPreStabilized
+            % If pre-stabilization worked, just use that controller
+            K = K_stab;
+            details = [details, 'Using pre-stabilizing controller as fallback.\n'];
         else
-            L = t(idx_10);  % Estimate delay as time at 10% rise
+            % Create a conservative controller based on structure
+            switch structure
+                case 'P'
+                    K = tf(0.1, 1);
+                case 'PI'
+                    K = tf([0.1, 0.01], [1, 0]);
+                case 'PD'
+                    K = tf([0.02, 0.1], [epsilon, 1]);
+                case 'PID'
+                    K = tf([0.02, 0.1, 0.01], [epsilon, 1, 0]);
+                otherwise
+                    K = tf(0.1, 1);
+            end
+            details = [details, 'Using default conservative controller as fallback.\n'];
         end
-        
-        T = t(idx_63) - L;  % Time constant (63.2% time minus delay)
     end
     
-    % Calculate parameter ratio for tuning adjustment
-    ratio = L/T;
-    
-    details = [details, sprintf('Ks = %.4f\nL = %.4f s\nT = %.4f s\nL/T ratio = %.4f\n', Ks, L, T, ratio)];
-    
-    % Calculate controller parameters with improved Åström rules
-    switch structure
-        case 'P'
-            if L < 0.5*T
-                Kp = 0.3 * T / (Ks * L);
-            elseif L < 2*T
-                Kp = 0.2 * T / (Ks * L); 
-            else
-                Kp = 0.15 / Ks;
-            end
-            K = tf(Kp, 1);
-        case 'PI'
-            if L < 0.5*T
-                Kp = 0.3 * T / (Ks * L);
-            elseif L < 2*T
-                Kp = 0.25 * T / (Ks * L); 
-            else
-                Kp = 0.15 / Ks;
-            end
-            
-            if L < 0.1*T
-                Ti = 8 * L;
-            elseif L < 2*T
-                Ti = 0.8 * T;
-            else
-                Ti = 0.4 * (L + T);
-            end
-            
-            K = tf([Kp, Kp/Ti], [1, 0]);
-        case 'PD'
-            Kp = 0.4 * T / (Ks * L);
-            Td = 0.4 * L;
-            
-            % For plants with RHP zeros, reduce derivative action
-            if plantInfo.hasRHPZeros
-                Td = Td * 0.5;
-                details = [details, 'Reduced derivative action due to non-minimum phase behavior.\n'];
-            end
-            
-            K = tf([Kp*Td, Kp], [epsilon*Td, 1]);
-        case 'PID'
-            if plantInfo.hasRHPZeros
-                details = [details, 'Adjusting PID for non-minimum phase plant.\n'];
-                Kp = 0.25 * T / (Ks * L);
-                Ti = 1.2 * T;
-                Td = 0.2 * L;
-            elseif L < 0.1*T
-                Kp = 0.3 * T / (Ks * L);
-                Ti = 8 * L;
-                Td = 0.25 * L;
-            elseif L < 2*T
-                Kp = 0.3 * T / (Ks * L);
-                Ti = 0.8 * T;
-                Td = 0.2 * L;
-            else
-                Kp = 0.15 / Ks;
-                Ti = 0.4 * (L + T);
-                Td = 0.15 * L;
-            end
-            
-            % For plants with integrator, adjust integral term
-            if plantInfo.hasIntegrator
-                details = [details, 'Adjusting for integrator in plant.\n'];
-                Ti = Ti * 2;
-            end
-            
-            K = tf([Kp*Td, Kp, Kp/Ti], [epsilon*Td, 1, 0]);
-        otherwise
-            error('Unsupported controller structure for Åström method');
-    end
-    
-    % For unstable plants, combine with pre-stabilizing controller
-    if plantInfo.isUnstable
-        K_combined = series(K, K_stab);
-        
-        % Simplify the combined controller if possible
-        try
-            K_combined = minreal(K_combined);
-        catch
-            % If simplification fails, use the original combination
-        end
-        
-        K = K_combined;
-        details = [details, 'Combined with pre-stabilizing controller for unstable plant.\n'];
-    end
-    
-    % Verify controller and closed-loop stability
+    % Verify controller stability
     try
         K_poles = pole(K);
         if any(real(K_poles) > 0)
-            details = [details, 'Warning: Controller has unstable poles. Applying stabilization.\n'];
+            details = [details, 'WARNING: Controller has unstable poles. Applying stabilization.\n'];
             
             % Force controller stability
             [num, den] = tfdata(K, 'v');

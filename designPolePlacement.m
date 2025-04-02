@@ -2,7 +2,8 @@ function [K, details] = designPolePlacement(G, structure, options, plantInfo)
 % DESIGNPOLEPLACEMENT Controller design using pole placement method
 %
 % Implements the pole placement (Zustandsrückführung mit Polvorgabe) method
-% as described in section 6.6 of the Regelungstechnik document
+% as described in section 6.6 of the Regelungstechnik document. Enhanced to work
+% as an automated controller design method with more robust error handling.
 %
 % Inputs:
 %   G        - Plant transfer function
@@ -11,6 +12,8 @@ function [K, details] = designPolePlacement(G, structure, options, plantInfo)
 %     .bandwidth - Desired bandwidth in rad/s (default: 1)
 %     .damping   - Desired damping ratio (default: 0.8)
 %     .epsilon   - Filter parameter for D-term (default: 0.1)
+%     .stateSpace - Optional state-space model (if provided from outside)
+%     .stateMatrices - Optional {A, B, C, D} cell array
 %   plantInfo - Structure with plant analysis information
 %
 % Outputs:
@@ -44,12 +47,24 @@ function [K, details] = designPolePlacement(G, structure, options, plantInfo)
     details = [details, sprintf('Desired damping ratio: %.4f\n', zeta)];
     details = [details, sprintf('Derivative filter coefficient: %.4f\n', epsilon)];
     
-    % First, convert transfer function to state space
+    % First, get or convert to state space
     try
-        % Try the direct conversion first
-        sys_ss = ss(G);
-        
-        details = [details, 'Successfully converted to state-space representation.\n'];
+        % Check if state-space model is provided
+        if isfield(options, 'stateSpace') && ~isempty(options.stateSpace)
+            sys_ss = options.stateSpace;
+            details = [details, 'Using provided state-space model.\n'];
+        elseif isfield(options, 'stateMatrices') && ~isempty(options.stateMatrices)
+            A = options.stateMatrices{1};
+            B = options.stateMatrices{2};
+            C = options.stateMatrices{3};
+            D = options.stateMatrices{4};
+            sys_ss = ss(A, B, C, D);
+            details = [details, 'Using provided state-space matrices.\n'];
+        else
+            % Try the direct conversion first
+            sys_ss = ss(G);
+            details = [details, 'Successfully converted to state-space representation.\n'];
+        end
     catch ME
         % If direct conversion fails, try a different approach for problematic cases
         details = [details, sprintf('Direct state-space conversion failed: %s\n', ME.message)];
@@ -506,51 +521,86 @@ function [K, details] = designPolePlacement(G, structure, options, plantInfo)
                 details = [details, 'Could not verify adjusted controller stability.\n'];
             end
         end
+        
+        % Add a performance evaluation
+        try
+            % Evaluate step response if system is stable
+            if is_stable
+                [y, t] = step(closed_loop, linspace(0, 10/omega, 1000));
+                stepInfo = stepinfo(y, t);
+                
+                details = [details, '\nClosed-loop performance:\n'];
+                
+                if isfield(stepInfo, 'RiseTime') && ~isnan(stepInfo.RiseTime)
+                    details = [details, sprintf('Rise time: %.4f s\n', stepInfo.RiseTime)];
+                end
+                
+                if isfield(stepInfo, 'SettlingTime') && ~isnan(stepInfo.SettlingTime)
+                    details = [details, sprintf('Settling time: %.4f s\n', stepInfo.SettlingTime)];
+                end
+                
+                if isfield(stepInfo, 'Overshoot') && ~isnan(stepInfo.Overshoot)
+                    details = [details, sprintf('Overshoot: %.2f%%\n', stepInfo.Overshoot)];
+                end
+                
+                % Add stability margins
+                try
+                    [Gm, Pm, ~, ~] = margin(G*K);
+                    Gm_dB = 20*log10(Gm);
+                    
+                    details = [details, sprintf('Gain margin: %.2f dB\n', Gm_dB)];
+                    details = [details, sprintf('Phase margin: %.2f degrees\n', Pm)];
+                    
+                    % Evaluate controller quality based on margins
+                    score = 0;
+                    
+                    % Base score from stability
+                    if is_stable
+                        score = 60;  % Starting score for stable system
+                    else
+                        score = 0;   % Unstable system gets 0
+                    end
+                    
+                    % Add points for good margins
+                    if Gm_dB > 10
+                        score = score + 10;
+                    elseif Gm_dB > 6
+                        score = score + 5;
+                    end
+                    
+                    if Pm > 60
+                        score = score + 10;
+                    elseif Pm > 45
+                        score = score + 5;
+                    end
+                    
+                    % Add points for good time response
+                    if isfield(stepInfo, 'Overshoot') && ~isnan(stepInfo.Overshoot)
+                        if stepInfo.Overshoot < 5
+                            score = score + 10;
+                        elseif stepInfo.Overshoot < 15
+                            score = score + 5;
+                        elseif stepInfo.Overshoot > 25
+                            score = score - 5;
+                        end
+                    end
+                    
+                    % Adjust for complexity of the plant
+                    if plantInfo.isUnstable || plantInfo.hasRHPZeros
+                        score = score + 5;  % Bonus for handling difficult plants
+                    end
+                    
+                    details = [details, sprintf('\nController Score: %.2f/100\n', score)];
+                catch
+                    details = [details, 'Could not calculate stability margins.\n'];
+                end
+            end
+        catch
+            details = [details, 'Could not analyze closed-loop performance.\n'];
+        end
     catch ME
         details = [details, sprintf('\nError in closed-loop analysis: %s\n', ME.message)];
     end
     
     return;
-end
-
-% Helper function to create a formatted string with plant information
-function infoStr = getPlantInfoString(plantInfo)
-    % Initialize output string
-    infoStr = '';
-    
-    % Add stability information
-    if plantInfo.isUnstable
-        infoStr = [infoStr, 'Unstable, '];
-    else
-        infoStr = [infoStr, 'Stable, '];
-    end
-    
-    % Add integrator information
-    if plantInfo.hasIntegrator
-        infoStr = [infoStr, 'Has integrator, '];
-    end
-    
-    % Add RHP zeros information
-    if plantInfo.hasRHPZeros
-        infoStr = [infoStr, 'Non-minimum phase, '];
-    end
-    
-    % Add delay information
-    if plantInfo.hasDelay
-        infoStr = [infoStr, 'Has delay, '];
-    end
-    
-    % Add order information
-    if plantInfo.isHighOrder
-        infoStr = [infoStr, 'High-order, '];
-    else
-        infoStr = [infoStr, 'Low-order, '];
-    end
-    
-    % Add DC gain if available
-    if ~isnan(plantInfo.dcGain) && ~isinf(plantInfo.dcGain)
-        infoStr = [infoStr, sprintf('DC gain=%.3g', plantInfo.dcGain)];
-    else
-        infoStr = [infoStr, 'Infinite DC gain'];
-    end
 end
