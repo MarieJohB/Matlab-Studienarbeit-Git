@@ -2,7 +2,7 @@ function [isStable, isProper, isStrictlyProper] = check_tf_conditions(tf_sys)
     % CHECK_TF_CONDITIONS Check if a transfer function satisfies various conditions
     %
     % This function checks if the transfer function system tf_sys:
-    % - is stable (all poles have negative real parts, verified using Hurwitz criterion),
+    % - is stable (using the Routh-Hurwitz criterion via routh_hurwitz_tf),
     % - is proper (numerator degree ≤ denominator degree), and
     % - is strictly proper (numerator degree < denominator degree).
     %
@@ -31,6 +31,6 @@ function [isStable, isProper, isStrictlyProper] = check_tf_conditions(tf_sys)
     % Check if strictly proper: numerator degree < denominator degree
     isStrictlyProper = (degNum < degDen);
     
-    % Check stability using Hurwitz criterion
-    isStable = check_stability_hurwitz(tf_sys);
+    % Check stability using the existing Routh-Hurwitz function
+    isStable = routh_hurwitz_tf(tf_sys);
 end
