@@ -1,14 +1,4 @@
 function disturbance_preview_continuous_function(ax, startField, endField, stepField, funcField, disturbance_label)
-% DISTURBANCE_PREVIEW_CONTINUOUS_FUNCTION - Preview the continuous function in the plot area
-%
-% Parameters:
-%   ax - The axes to plot in
-%   startField - Start time edit field
-%   endField - End time edit field
-%   stepField - Time steps edit field
-%   funcField - Function edit field
-%   disturbance_label - The label for the disturbance (e.g. 'd_1')
-
 try
     % Get time parameters
     start_time = startField.Value;
@@ -26,6 +16,9 @@ try
     
     % Get function string
     funcStr = funcField.Value;
+    
+    % Replace commas with periods for numerical consistency
+    funcStr = strrep(funcStr, ',', '.');
     
     % If function is empty, show empty plot
     if isempty(funcStr)
@@ -45,7 +38,6 @@ try
     cla(ax);
     plot(ax, t, y);
     xlabel(ax, 'Time (s)');
-    % No y-label as requested
     title(ax, ['Function: ', funcStr]);
     grid(ax, 'on');
 catch ME

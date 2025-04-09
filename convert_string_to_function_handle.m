@@ -9,6 +9,9 @@ function f = convert_string_to_function_handle(funcStr)
 % Returns:
 %   f - Function handle representing the input string
 
+% Replace commas with periods for numerical consistency
+funcStr = strrep(funcStr, ',', '.');
+
 % Check if the string is empty
 if isempty(strtrim(funcStr))
     error('Function expression is empty.');

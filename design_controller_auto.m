@@ -116,7 +116,7 @@ function [K, details, score] = design_controller_auto(G, method, structure, opti
         % Prioritize methods that work well with unstable systems
         if strcmpi(method, 'auto')
             disp('Automatically prioritizing methods suitable for unstable high-order systems');
-            unstablePriorityMethods = {'Pre-stabilization', 'Enhanced State Feedback', 'Youla-Kucera Parameterization', 'Robust µ-synthesis'};
+            unstablePriorityMethods = {'Compensation Controller', 'Pole Placement'};
             method = selectBestMethodForUnstable(G, plantInfo, structure, unstablePriorityMethods);
         end
     end
@@ -128,7 +128,7 @@ function [K, details, score] = design_controller_auto(G, method, structure, opti
     end
     
     % Prepare state space model if needed for specific methods
-    stateSpaceNeededMethods = {'Enhanced State Feedback', 'Pre-stabilization', 'Pole Placement', 'LQG (Linear-Quadratic-Gaussian)'};
+    stateSpaceNeededMethods = {'Pole Placement'};
     
     if any(strcmpi(method, stateSpaceNeededMethods)) && ~isStateSpace && ~isfield(options, 'stateSpace')
         % Try to create state space model for methods that benefit from it
@@ -166,12 +166,6 @@ function [K, details, score] = design_controller_auto(G, method, structure, opti
             case 'Aström'
                 [K, details] = designAstrom(G, structure, options.epsilon, plantInfo);
                 
-            case 'CHR (with 0% Overshoot)'
-                [K, details] = designCHR(G, structure, options.epsilon, plantInfo);
-                
-            case 'Cohen-Coon'
-                [K, details] = designCohenCoon(G, structure, options.epsilon, plantInfo);
-                
             case 'Loop-Shaping'
                 [K, details] = designLoopShaping(G, structure, options.phaseMargin, options.bandwidth, options.epsilon, plantInfo);
                 
@@ -181,27 +175,11 @@ function [K, details, score] = design_controller_auto(G, method, structure, opti
             case 'MIGO (M-constrained Integral Gain Optimization)'
                 [K, details] = designMIGO(G, structure, options.robustness, options.epsilon, plantInfo);
                 
-            case 'H-infinity'
-                [K, details] = designHInfinity(G, structure, options.robustness, options.epsilon, plantInfo);
-                
-            case 'LQG (Linear-Quadratic-Gaussian)'
-                [K, details] = designLQG(G, structure, options.bandwidth, options.robustness, options.epsilon, plantInfo);
-                
-            case 'Enhanced State Feedback'
-                [K, details] = designEnhancedStateFeedback(G, structure, options, plantInfo);
-                
-            case 'Pre-stabilization'
-                [K, details] = designPreStabilization(G, structure, options, plantInfo);
-                
-            case 'Youla-Kucera Parameterization'
-                options.objective = options.goal;
-                [K, details] = designYoulaKucera(G, structure, options, plantInfo);
-                
-            case 'Robust µ-synthesis'
-                [K, details] = designMuSynthesis(G, structure, options, plantInfo);
-                
             case 'Pole Placement'
                 [K, details] = designPolePlacement(G, structure, options, plantInfo);
+                
+            case 'Compensation Controller'
+                [K, details] = designCompensationController(G, structure, options, plantInfo);
                 
             otherwise
                 error('Unknown design method: %s', method);
@@ -329,13 +307,9 @@ function method = selectBestMethod(G, plantInfo, structure, options)
     
     % Calculate a score for each method based on plant characteristics
     methods = {'Ziegler-Nichols (Oscillation)', 'Ziegler-Nichols (Step)', ...
-              'Aström', 'CHR (with 0% Overshoot)', 'Cohen-Coon', ...
-              'Loop-Shaping', 'IMC (Internal Model Control)', ...
+              'Aström', 'Loop-Shaping', 'IMC (Internal Model Control)', ...
               'MIGO (M-constrained Integral Gain Optimization)', ...
-              'H-infinity', 'LQG (Linear-Quadratic-Gaussian)', ...
-              'Enhanced State Feedback', 'Pre-stabilization', ...
-              'Youla-Kucera Parameterization', 'Robust µ-synthesis', ...
-              'Pole Placement'};
+              'Pole Placement', 'Compensation Controller'};
           
     % Initialize scores
     scores = zeros(1, length(methods));
@@ -348,7 +322,7 @@ function method = selectBestMethod(G, plantInfo, structure, options)
     % For unstable high-order systems, strongly bias toward specific methods
     if plantInfo.isUnstable && plantInfo.isHighOrder
         % These methods work best for challenging unstable systems
-        unstable_methods = {'Pre-stabilization', 'Enhanced State Feedback', 'Youla-Kucera Parameterization', 'Robust µ-synthesis'};
+        unstable_methods = {'Compensation Controller', 'Pole Placement'};
         
         for i = 1:length(methods)
             if any(strcmpi(methods{i}, unstable_methods))
@@ -388,9 +362,9 @@ function method = selectBestMethodForUnstable(G, plantInfo, structure, priorityM
         end
     end
     
-    % Default to pre-stabilization if all checks fail
-    method = 'Pre-stabilization';
-    disp('Defaulting to Pre-stabilization method as fallback for unstable system');
+    % Default to Compensation Controller if all checks fail
+    method = 'Compensation Controller';
+    disp('Defaulting to Compensation Controller method as fallback for unstable system');
 end
 
 function applicable = isApplicableForUnstable(G, methodName, plantInfo)
@@ -398,11 +372,11 @@ function applicable = isApplicableForUnstable(G, methodName, plantInfo)
     
     % Check method-specific criteria
     switch methodName
-        case 'Pre-stabilization'
-            % Always try pre-stabilization first for unstable systems
+        case 'Compensation Controller'
+            % Compensation Controller can handle most unstable systems
             applicable = true;
             
-        case 'Enhanced State Feedback'
+        case 'Pole Placement'
             % Check if state-space conversion is possible
             try
                 ss(G);
@@ -416,18 +390,6 @@ function applicable = isApplicableForUnstable(G, methodName, plantInfo)
                     applicable = false;
                 end
             end
-            
-        case 'Youla-Kucera Parameterization'
-            % Check for some basic criteria
-            p = plantInfo.poles;
-            unstable_poles = p(real(p) > 0);
-            
-            % Youla-Kucera often struggles with too many unstable poles
-            applicable = (length(unstable_poles) <= 3);
-            
-        case 'Robust µ-synthesis'
-            % µ-synthesis may be too complex for very high order systems
-            applicable = (length(plantInfo.poles) <= 10);
             
         otherwise
             applicable = false;
@@ -443,7 +405,7 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
     
     % Plant characteristics-based scoring
     switch method
-        case {'Ziegler-Nichols (Oscillation)', 'Ziegler-Nichols (Step)', 'Aström', 'CHR (with 0% Overshoot)', 'Cohen-Coon'}
+        case {'Ziegler-Nichols (Oscillation)', 'Ziegler-Nichols (Step)', 'Aström'}
             % Classical methods are good for stable, low-order systems
             if plantInfo.isUnstable
                 score = score - 40;  % Greatly penalize for unstable plants
@@ -488,71 +450,6 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
                 score = score + 10;
             end
             
-        case 'H-infinity'
-            % Very good for robust control, especially with uncertainties
-            if strcmpi(options.robustness, 'High')
-                score = score + 15;
-            end
-            if plantInfo.hasRHPZeros
-                score = score + 10;  % Good for non-minimum phase
-            end
-            if plantInfo.isUnstable
-                score = score + 5;   % Can handle unstable plants
-            end
-            
-        case 'LQG (Linear-Quadratic-Gaussian)'
-            % Good for systems with noise, needs state-space representation
-            if isa(G, 'ss') || isfield(options, 'stateSpace')
-                score = score + 10;  % Bonus for state-space models
-            end
-            if plantInfo.isUnstable
-                score = score + 5;   % Can handle some unstable plants
-            end
-            
-        case 'Enhanced State Feedback'
-            % Excellent for state-space models and unstable systems
-            if isa(G, 'ss') || isfield(options, 'stateSpace')
-                score = score + 15;
-            end
-            if plantInfo.isUnstable
-                score = score + 25;  % Very good for unstable systems
-            end
-            if plantInfo.isHighOrder
-                score = score + 15;  % Good for high-order systems
-            end
-            
-        case 'Pre-stabilization'
-            % Specifically designed for unstable systems
-            if plantInfo.isUnstable
-                score = score + 35;  % Major bonus for unstable systems
-            else
-                score = score - 25;  % Major penalty for stable systems
-            end
-            if plantInfo.hasRHPZeros && plantInfo.isUnstable
-                score = score + 15;  % Extra bonus for this challenging combination
-            end
-            
-        case 'Youla-Kucera Parameterization'
-            % Great for complex and challenging systems
-            if plantInfo.isUnstable || plantInfo.hasRHPZeros
-                score = score + 25;
-            end
-            if plantInfo.isHighOrder
-                score = score + 15;
-            end
-            
-        case 'Robust µ-synthesis'
-            % Excellent for dealing with uncertainties
-            if strcmpi(options.robustness, 'High')
-                score = score + 20;
-            end
-            if options.uncertainty > 15
-                score = score + options.uncertainty / 2;  % Scales with uncertainty level
-            end
-            if plantInfo.isUnstable
-                score = score + 15;  % Good for unstable systems
-            end
-            
         case 'Pole Placement'
             % Good for state-space models and when precise dynamics are needed
             if isa(G, 'ss') || isfield(options, 'stateSpace')
@@ -564,6 +461,23 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
             if plantInfo.isHighOrder
                 score = score + 5;   % Can handle high-order systems
             end
+            
+        case 'Compensation Controller'
+            % Excellent for systems with problematic dynamics
+            if plantInfo.isUnstable
+                score = score + 30;  % Major bonus for unstable systems
+            end
+            if plantInfo.hasRHPZeros
+                score = score + 25;  % Excellent for non-minimum phase systems
+            end
+            if plantInfo.isHighOrder
+                score = score + 15;  % Good for high-order systems
+            end
+            % Multiple unstable poles are a strong case for compensation
+            p = plantInfo.poles;
+            if sum(real(p) > 0) > 1
+                score = score + 20;  % Major bonus for multiple unstable poles
+            end
     end
     
     % Controller structure-based adjustments
@@ -574,34 +488,34 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
         end
       elseif strcmpi(structure, 'PID')
         % More advanced methods may be better for PID controllers
-        if ismember(method, {'Youla-Kucera Parameterization', 'H-infinity', 'Robust µ-synthesis', 'Enhanced State Feedback'})
+        if ismember(method, {'Pole Placement', 'Compensation Controller'})
             score = score + 5;
         end
     end
     
     % Performance requirements-based adjustments
     if strcmpi(options.goal, 'Tracking')
-        if ismember(method, {'IMC (Internal Model Control)', 'Pole Placement', 'Enhanced State Feedback'})
+        if ismember(method, {'IMC (Internal Model Control)', 'Pole Placement'})
             score = score + 5;
         end
       elseif strcmpi(options.goal, 'Disturbance Rejection')
-        if ismember(method, {'MIGO (M-constrained Integral Gain Optimization)', 'H-infinity', 'Youla-Kucera Parameterization'})
+        if ismember(method, {'MIGO (M-constrained Integral Gain Optimization)', 'Compensation Controller'})
             score = score + 5;
         end
       elseif strcmpi(options.goal, 'Robustness')
-        if ismember(method, {'H-infinity', 'Robust µ-synthesis', 'Youla-Kucera Parameterization'})
+        if ismember(method, {'MIGO (M-constrained Integral Gain Optimization)', 'Compensation Controller'})
             score = score + 10;
         end
     end
     
     % Bandwidth considerations
-    if options.bandwidth > 5 && ismember(method, {'Pre-stabilization', 'Enhanced State Feedback', 'Robust µ-synthesis'})
+    if options.bandwidth > 5 && ismember(method, {'Pole Placement', 'Compensation Controller'})
         score = score + 5;  % These methods can handle high-bandwidth requirements
     end
     
     % Balance complexity vs. effectiveness for unstable systems
     if plantInfo.isUnstable && length(plantInfo.poles) > 4
-        if ismember(method, {'Pole Placement', 'Enhanced State Feedback', 'Pre-stabilization'})
+        if ismember(method, {'Pole Placement', 'Compensation Controller'})
             score = score + 15;  % These methods work well for high-order unstable systems
         end
     end
@@ -781,6 +695,23 @@ function [K, details] = designEmergencyControllerForUnstable(G, structure, optio
     details = 'EMERGENCY CONTROLLER DESIGN FOR HIGHLY UNSTABLE SYSTEM\n';
     details = [details, '---------------------------------------------------\n'];
     details = [details, sprintf('Plant Analysis: %s\n', getPlantInfoString(plantInfo))];
+    
+    % Try using the Compensation Controller approach first
+    try
+        [K, details_comp] = designCompensationController(G, structure, options, plantInfo);
+        
+        % Test if this controller stabilizes the system
+        closed_loop = feedback(G*K, 1);
+        if all(real(pole(closed_loop)) < 0)
+            details = [details, 'Compensation Controller approach worked successfully!\n\n'];
+            details = [details, details_comp];
+            return;
+        else
+            details = [details, 'Compensation Controller could not stabilize the system. Trying other approaches...\n'];
+        end
+    catch ME
+        details = [details, sprintf('Compensation Controller approach failed: %s\n', ME.message)];
+    end
     
     % First try direct pre-stabilization as pure pole-zero cancellation
     try
@@ -996,6 +927,79 @@ function [K, details] = designEmergencyControllerForUnstable(G, structure, optio
     return;
 end
 
+function [K, details] = designFallbackController(G, structure, epsilon, plantInfo)
+    % Design fallback controller when the main design method fails
+    
+    details = 'FALLBACK CONTROLLER DESIGN\n';
+    details = [details, '--------------------------\n'];
+    
+    % Try using Compensation Controller as fallback
+    try
+        % Create options structure for compensation controller
+        options = struct();
+        options.epsilon = epsilon;
+        options.bandwidth = 0.5;  % Conservative bandwidth
+        options.damping = 0.9;    % High damping for stability
+        
+        [K, details_comp] = designCompensationController(G, structure, options, plantInfo);
+        
+        % Test if this controller stabilizes the system
+        closed_loop = feedback(G*K, 1);
+        
+        if all(real(pole(closed_loop)) < 0)
+            details = [details, 'Compensation Controller approach worked as fallback!\n\n'];
+            details = [details, details_comp];
+            return;
+        end
+    catch
+        % If compensation controller fails, continue with conservative design
+    end
+    
+    % If compensation controller fails, use conservative PID parameters
+    if plantInfo.isUnstable
+        % For unstable plants - very conservative gains
+        switch structure
+            case 'P'
+                K = tf(0.01, 1);
+                details = [details, 'Created fallback P controller for unstable plant.\n'];
+            case 'PI'
+                K = tf([0.01, 0.001], [1, 0]);
+                details = [details, 'Created fallback PI controller for unstable plant.\n'];
+            case 'PD'
+                K = tf([0.05, 0.01], [0.01, 1]);
+                details = [details, 'Created fallback PD controller for unstable plant.\n'];
+            case 'PID'
+                K = tf([0.05, 0.01, 0.001], [0.01, 1, 0]);
+                details = [details, 'Created fallback PID controller for unstable plant.\n'];
+            otherwise
+                K = tf(0.01, 1);
+                details = [details, 'Created fallback P controller for unstable plant.\n'];
+        end
+    else
+        % For stable plants - conservative but more reasonable gains
+        switch structure
+            case 'P'
+                K = tf(0.1, 1);
+                details = [details, 'Created fallback P controller for stable plant.\n'];
+            case 'PI'
+                K = tf([0.1, 0.05], [1, 0]);
+                details = [details, 'Created fallback PI controller for stable plant.\n'];
+            case 'PD'
+                K = tf([0.2, 0.1], [0.05, 1]);
+                details = [details, 'Created fallback PD controller for stable plant.\n'];
+            case 'PID'
+                K = tf([0.2, 0.1, 0.05], [0.05, 1, 0]);
+                details = [details, 'Created fallback PID controller for stable plant.\n'];
+            otherwise
+                K = tf(0.1, 1);
+                details = [details, 'Created fallback P controller for stable plant.\n'];
+        end
+    end
+    
+    details = [details, 'This is a conservative controller for stability.\n'];
+    details = [details, 'Manual tuning may significantly improve performance.\n'];
+end
+
 function [K, details] = designConservativeController(G, structure, epsilon, plantInfo)
     % Design very conservative controller when other methods fail
     
@@ -1079,4 +1083,201 @@ function [K, details] = designConservativeController(G, structure, epsilon, plan
     end
     
     return;
+end
+
+function score = evaluateController(K, G, goal, phaseMargin, overshoot, settlingTime, bandwidth)
+    % EVALUATECONTROLLER Evaluate controller quality and assign a score
+    % Higher score means better performance, with 100 being the maximum
+    
+    score = 50;  % Base score
+    
+    % Check closed-loop stability
+    try
+        T = feedback(G*K, 1);
+        cl_poles = pole(T);
+        
+        if any(real(cl_poles) > 0)
+            score = -20;  % Severe penalty for unstable closed-loop system
+            return;
+        end
+    catch
+        score = -10;  % Penalize if stability check fails
+        return;
+    end
+    
+    % Stability margins
+    try
+        [Gm, Pm, Wcg, Wcp] = margin(G*K);
+        
+        % Phase margin scoring (optimal: ~45-60 degrees)
+        if ~isempty(Pm) && ~isnan(Pm) && ~isinf(Pm)
+            if Pm < 30
+                score = score - 20;  % Severe penalty for low phase margin
+            elseif Pm < phaseMargin
+                score = score - 10 * (phaseMargin - Pm) / phaseMargin;  % Scaled penalty
+            elseif Pm > 80
+                score = score - 5;  % Small penalty for excessive phase margin (sluggish)
+            else
+                score = score + 10;  % Bonus for good phase margin
+            end
+        end
+        
+        % Gain margin scoring (optimal: ~6-12 dB)
+        if ~isempty(Gm) && ~isnan(Gm) && ~isinf(Gm)
+            Gm_dB = 20 * log10(Gm);
+            if Gm_dB < 6
+                score = score - 10;  % Penalty for low gain margin
+            elseif Gm_dB > 20
+                score = score - 5;  % Small penalty for excessive gain margin (sluggish)
+            else
+                score = score + 5;  % Bonus for good gain margin
+            end
+        end
+    catch
+        % No penalty if margins can't be calculated
+    end
+    
+    % Step response metrics
+    try
+        % Get step response
+        [y, t] = step(feedback(G*K, 1));
+        stepInfo = stepinfo(y, t);
+        
+        % Overshoot scoring
+        actual_overshoot = stepInfo.Overshoot;
+        if ~isnan(actual_overshoot)
+            if actual_overshoot > overshoot * 2
+                score = score - 15;  % Severe penalty for excessive overshoot
+            elseif actual_overshoot > overshoot
+                score = score - 5 * (actual_overshoot - overshoot) / overshoot;  % Scaled penalty
+            elseif actual_overshoot < 0.1
+                % Very small overshoot might indicate a sluggish system
+                score = score - 5;
+            else
+                score = score + 5;  % Bonus for good overshoot
+            end
+        end
+        
+        % Settling time scoring
+        actual_settling = stepInfo.SettlingTime;
+        if ~isnan(actual_settling)
+            if actual_settling > settlingTime * 3
+                score = score - 15;  % Severe penalty for very long settling time
+            elseif actual_settling > settlingTime
+                score = score - 5 * (actual_settling - settlingTime) / settlingTime;  % Scaled penalty
+            else
+                score = score + 10;  % Bonus for good settling time
+            end
+        end
+    catch
+        % Reduce score if step response analysis fails
+        score = score - 5;
+    end
+    
+    % Frequency response metrics
+    try
+        % Check bandwidth
+        [mag, phase, w] = bode(feedback(G*K, 1));
+        mag = squeeze(mag);
+        
+        % Find the -3dB bandwidth
+        idx = find(mag < 0.707, 1, 'first');
+        if ~isempty(idx) && idx > 1
+            actual_BW = w(idx-1);
+            
+            % Bandwidth scoring
+            if actual_BW < bandwidth * 0.5
+                score = score - 10;  % Penalty for too low bandwidth
+            elseif actual_BW > bandwidth * 3
+                score = score - 5;  % Small penalty for excessive bandwidth (noise sensitivity)
+            else
+                score = score + 5;  % Bonus for good bandwidth
+            end
+        end
+    catch
+        % No penalty if bandwidth can't be calculated
+    end
+    
+    % Specific goal-based scoring
+    switch goal
+        case 'Tracking'
+            try
+                % Check step response final value for tracking
+                [y, ~] = step(feedback(G*K, 1));
+                final_value = y(end);
+                
+                if abs(final_value - 1) > 0.05
+                    score = score - 15;  % Severe penalty for steady-state error
+                else
+                    score = score + 10;  % Bonus for good tracking
+                end
+                
+                % Check for sensitivity to high-frequency noise (for tracking systems)
+                [mag, ~, w] = bode(K*feedback(1, G*K));
+                mag = squeeze(mag);
+                
+                if max(mag) > 10
+                    score = score - 10;  % Penalty for high noise sensitivity
+                end
+            catch
+                % No penalty if tracking metrics can't be calculated
+            end
+            
+        case 'Disturbance Rejection'
+            try
+                % Check disturbance response
+                S = feedback(1, G*K);  % Sensitivity function
+                [mag, ~, w] = bode(S);
+                mag = squeeze(mag);
+                
+                % Penalty for poor low-frequency disturbance rejection
+                if mag(1) > 0.1
+                    score = score - 10;
+                else
+                    score = score + 10;  % Bonus for good disturbance rejection
+                end
+            catch
+                % No penalty if disturbance metrics can't be calculated
+            end
+            
+        case 'Robustness'
+            try
+                % Calculate gain and phase margins again for robustness evaluation
+                [Gm, Pm, ~, ~] = margin(G*K);
+                
+                % More strict requirements for robustness goal
+                if Pm < 45 || 20*log10(Gm) < 8
+                    score = score - 15;  % Severe penalty for low margins
+                else
+                    score = score + 15;  % Larger bonus for good margins
+                end
+                
+                % Check sensitivity peak (lower is more robust)
+                S = feedback(1, G*K);
+                [mag, ~, ~] = bode(S);
+                mag = squeeze(mag);
+                
+                sensitivity_peak = max(mag);
+                if sensitivity_peak > 2
+                    score = score - 10;  % Penalty for high sensitivity peak
+                elseif sensitivity_peak < 1.5
+                    score = score + 10;  % Bonus for low sensitivity peak
+                end
+            catch
+                % No penalty if robustness metrics can't be calculated
+            end
+    end
+    
+    % Controller complexity penalty
+    try
+        [num, den] = tfdata(K, 'v');
+        if length(num) > 5 || length(den) > 5
+            score = score - 5;  % Penalty for complex controllers
+        end
+    catch
+        % No penalty if complexity can't be calculated
+    end
+    
+    % Ensure score is within bounds
+    score = min(max(score, -100), 100);
 end

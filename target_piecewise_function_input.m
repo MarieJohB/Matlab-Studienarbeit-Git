@@ -130,7 +130,13 @@ function updateTableValues(src, event)
     % Check which column was edited
     if event.Indices(2) == 3 % Time Steps column
         % Get the new time step value
-        newTimeStep = event.NewData;
+        newTimeStepStr = event.NewData;
+        if ischar(newTimeStepStr)
+            newTimeStepStr = strrep(newTimeStepStr, ',', '.');
+            newTimeStep = str2double(newTimeStepStr);
+        else
+            newTimeStep = event.NewData;
+        end
         
         % Update all rows with the same time step
         for row = 1:size(data, 1)
@@ -142,8 +148,16 @@ function updateTableValues(src, event)
     elseif event.Indices(2) == 2 % End Time column
         % If end time is edited, update the start time of the next section
         row = event.Indices(1);
+        
+        % Convert comma to period if needed
+        if ischar(event.NewData)
+            newData = str2double(strrep(event.NewData, ',', '.'));
+        else
+            newData = event.NewData;
+        end
+        
         if row < size(data, 1)
-            data{row+1, 1} = event.NewData; % Set start time of next section
+            data{row+1, 1} = newData; % Set start time of next section
             
             % Also update any subsequent sections to maintain continuity
             for nextRow = row+2:size(data, 1)

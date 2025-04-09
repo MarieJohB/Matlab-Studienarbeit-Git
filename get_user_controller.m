@@ -422,26 +422,19 @@ function K = get_user_controller(G)
             'Position', [10 10 680 170], 'TitlePosition', 'centertop', ...
             'FontWeight', 'bold', 'FontSize', 14, 'BackgroundColor', appColors.panelBg);
         
-        % Methods selection with better layout (2 columns, no duplicates)
+        % Methods selection with better layout - REMOVED SPECIFIED METHODS AND ADDED COMPENSATION CONTROLLER
         methods = {
             'Ziegler-Nichols (Oscillation)', isApplicable(G, 'ZN-Oscillation'),
             'Ziegler-Nichols (Step)', isApplicable(G, 'ZN-Step'),
             'Aström', isApplicable(G, 'Astrom'),
-            'CHR (with 0% Overshoot)', isApplicable(G, 'CHR'),
-            'Cohen-Coon', isApplicable(G, 'Cohen-Coon'),
             'Loop-Shaping', isApplicable(G, 'Loop-Shaping'),
             'IMC (Internal Model Control)', isApplicable(G, 'IMC'),
             'MIGO (M-constrained Integral Gain Optimization)', isApplicable(G, 'MIGO'),
-            'H-infinity', isApplicable(G, 'H-infinity'),
-            'LQG (Linear-Quadratic-Gaussian)', isApplicable(G, 'LQG'),
-            'Enhanced State Feedback', isApplicable(G, 'Enhanced State Feedback'),
-            'Pre-stabilization', isApplicable(G, 'Pre-stabilization'),
-            'Youla-Kucera Parameterization', isApplicable(G, 'Youla-Kucera Parameterization'),
-            'Robust µ-synthesis', isApplicable(G, 'Robust µ-synthesis'),
-            'Pole Placement', isApplicable(G, 'Pole-Placement')
+            'Pole Placement', isApplicable(G, 'Pole-Placement'),
+            'Compensation Controller', isApplicable(G, 'Compensation-Controller')
         };
         
-        % CHANGE: Improved layout for methods to ensure all are visible
+        % CHANGE: Improved layout for methods with fewer options
         numMethods = size(methods, 1);
         numRows = ceil(numMethods / 2);
         
@@ -453,12 +446,12 @@ function K = get_user_controller(G)
             
             % Calculate position - x offset for second column
             x = 20 + col * 340;
-            y = 170 - row * 20;  % Reduced spacing further and increased start height
+            y = 170 - row * 30;  % Adjusted spacing for fewer methods
             
             % Create checkbox with improved styling
             cb = uicheckbox(designPanel, 'Text', methods{i, 1}, ...
                 'Position', [x y 320 20], 'Value', methods{i, 2}, ...
-                'FontSize', 11);  % Slightly smaller font to fit
+                'FontSize', 12);  
             
             % Gray out and disable if not applicable
             if ~methods{i, 2}
@@ -493,7 +486,6 @@ function K = get_user_controller(G)
             'FontSize', 12);
         
         % Performance requirements with improved layout
-        % CHANGE: Fixed damping ratio position to be properly inside the panel
         % Left column
         phaseMarginLabel = uilabel(performancePanel, 'Text', 'Phase Margin (deg):', ...
             'Position', [20 80 150 22], 'FontSize', 12);
@@ -538,7 +530,6 @@ function K = get_user_controller(G)
             'Position', [450 20 170 22], 'Value', 'Tracking', ...
             'FontSize', 12);
         
-        % CHANGE: Fixed damping ratio position - now properly inside the panel
         dampingLabel = uilabel(performancePanel, 'Text', 'Damping Ratio:', ...
         'Position', [20, 110, 150, 22], 'FontSize', 12);
         dampingField = uieditfield(performancePanel, 'numeric', ...
@@ -612,46 +603,23 @@ function K = get_user_controller(G)
                 '3. Aström: Improved version of Ziegler-Nichols with better robustness.',
                 '   • Best for: Similar to Ziegler-Nichols, but when less overshoot is desired.',
                 '',
-                '4. CHR (Chien-Hrones-Reswick): Designed for either servo or regulator problems with focus on overshoot.',
-                '   • Best for: When specific overshoot constraints exist.',
-                '',
-                '5. Cohen-Coon: Designed specifically for plants with significant dead time.',
-                '   • Best for: Processes with large transport delays.',
-                '',
-                '6. Loop-Shaping: Frequency-domain method focused on achieving desired loop shape.',
+                '4. Loop-Shaping: Frequency-domain method focused on achieving desired loop shape.',
                 '   • Best for: When specific bandwidth and phase margin are required.',
                 '',
-                '7. IMC (Internal Model Control): Based on process model and desired closed-loop response.',
+                '5. IMC (Internal Model Control): Based on process model and desired closed-loop response.',
                 '   • Best for: Good disturbance rejection with specified settling time.',
                 '',
-                '8. MIGO: Maximizes integral gain while satisfying robustness constraints.',
+                '6. MIGO: Maximizes integral gain while satisfying robustness constraints.',
                 '   • Best for: Good balance between performance and robustness.',
                 '',
-                '9. H-infinity: Robust control method based on minimizing worst-case scenarios.',
-                '   • Best for: Systems with significant uncertainties or disturbances.',
+                '7. Pole Placement: Places closed-loop poles at desired locations.',
+                '   • Best for: Achieving specific time domain performance.',
+                '   • Features: Direct control over system dynamics.',
                 '',
-                '10. LQG: Combines linear quadratic regulator with Kalman filtering.',
-                '    • Best for: Optimal control in presence of Gaussian noise.',
-                '',
-                '11. Enhanced State Feedback with Observer:',
-                '    • Best for: High-order unstable systems and incomplete state measurements.',
-                '    • Features: Combines pole placement with robust state estimation.',
-                '    • Advantages: Better numerical properties for challenging systems.',
-                '',
-                '12. Pre-stabilization Controller Design:',
-                '    • Best for: Systems with multiple unstable poles or both RHP poles and zeros.',
-                '    • Features: Two-step approach that stabilizes first, then optimizes performance.',
-                '    • Advantages: Can handle systems that violate the Parity Interlacing Property (PIP).',
-                '',
-                '13. Youla-Kucera Parameterization:',
-                '    • Best for: Complex systems where standard designs fail.',
-                '    • Features: Direct parameterization of all stabilizing controllers.',
-                '    • Advantages: Guaranteed stability and performance-focused design.',
-                '',
-                '14. Robust µ-synthesis:',
-                '    • Best for: Systems with significant model uncertainty.',
-                '    • Features: Extension of H-infinity with structured uncertainty handling.',
-                '    • Advantages: Optimal robustness against specified uncertainties.'
+                '8. Compensation Controller: Directly compensates for plant dynamics.',
+                '   • Best for: Systems with problematic poles or zeros.',
+                '   • Features: Cancels or modifies critical plant dynamics.',
+                '   • Advantages: Can handle both stable and unstable systems with proper tuning.'
             };
             
             closeBtn = uibutton(methodInfoFig, 'push', 'Text', 'Close', ...
@@ -731,12 +699,6 @@ function K = get_user_controller(G)
                 case 'Astrom'
                     % For stable plants
                     applicable = isStable;
-                case 'CHR'
-                    % For stable plants
-                    applicable = isStable;
-                case 'Cohen-Coon'
-                    % For stable plants
-                    applicable = isStable;
                 case 'Loop-Shaping'
                     % All plants
                     applicable = true;
@@ -746,26 +708,11 @@ function K = get_user_controller(G)
                 case 'MIGO'
                     % For stable plants primarily
                     applicable = true;
-                case 'H-infinity'
-                    % All plants, especially good with uncertainties
-                    applicable = true;
-                case 'LQG'
-                    % All plants, requires state-space representation
-                    applicable = true;
                 case 'Pole-Placement'
                     % Pole placement is applicable to almost all systems
                     applicable = true;
-                case 'Enhanced State Feedback'
-                    % Enhanced State Feedback is applicable to almost all systems
-                    applicable = true;
-                case 'Pre-stabilization'
-                    % Pre-stabilization is most useful for unstable systems
-                    applicable = ~isStable;
-                case 'Youla-Kucera Parameterization'
-                    % Youla-Kucera Parameterization is applicable to all systems
-                    applicable = true;
-                case 'Robust µ-synthesis'
-                    % µ-synthesis is applicable to all systems
+                case 'Compensation-Controller'
+                    % Compensation controller is applicable to almost all systems
                     applicable = true;
                 otherwise
                     applicable = false;
@@ -913,7 +860,7 @@ function K = get_user_controller(G)
                     
                     % Add recommendations based on diagnostics
                     if any(real(pole(G)) > 0)
-                        resultArea.Value{end+1} = '• Try the advanced methods for unstable systems';
+                        resultArea.Value{end+1} = '• Try the Compensation Controller for unstable systems';
                     end
                     
                     if any(abs(pole(G)) < 1e-6)
@@ -921,13 +868,12 @@ function K = get_user_controller(G)
                     end
                     
                     if any(real(zero(G)) > 0)
-                        resultArea.Value{end+1} = '• For non-minimum phase systems, try Youla-Kucera Parameterization';
+                        resultArea.Value{end+1} = '• For non-minimum phase systems, try Compensation Controller';
                     end
                     
                     % Recommend advanced methods
-                    resultArea.Value{end+1} = '• Enhanced State Feedback often works better for high-order systems';
-                    resultArea.Value{end+1} = '• Pre-stabilization works well for multiple unstable poles';
-                    resultArea.Value{end+1} = '• For uncertain models, try Robust µ-synthesis';
+                    resultArea.Value{end+1} = '• Pole Placement often works better for high-order systems';
+                    resultArea.Value{end+1} = '• Compensation Controller works well for multiple unstable poles';
                     
                     % Enable Apply button but with warning
                     applyBtn.Enable = 'on';
@@ -949,11 +895,8 @@ function K = get_user_controller(G)
                     
                     resultArea.Value{end+1} = '';
                     resultArea.Value{end+1} = 'RECOMMENDATIONS:';
-                    resultArea.Value{end+1} = '• Try the advanced controller methods:';
-                    resultArea.Value{end+1} = '  - Pre-stabilization for unstable systems';
-                    resultArea.Value{end+1} = '  - Youla-Kucera for complex systems';
-                    resultArea.Value{end+1} = '  - Enhanced State Feedback for high-order systems';
-                    resultArea.Value{end+1} = '  - Robust µ-synthesis for uncertain models';
+                    resultArea.Value{end+1} = '• Try the Compensation Controller for challenging systems';
+                    resultArea.Value{end+1} = '• Pole Placement may work better for high-order systems';
                     
                     % Disable Apply button
                     applyBtn.Enable = 'off';
@@ -1163,7 +1106,7 @@ function K = get_user_controller(G)
                 if ~isempty(unstable_poles) || rel_degree <= 0 || (~isempty(z) && ~isempty(rhp_zeros))
                     diagnosticInfo{end+1} = '';
                     diagnosticInfo{end+1} = 'OVERALL: This system has challenging characteristics';
-                    diagnosticInfo{end+1} = 'Consider using the advanced controller design methods';
+                    diagnosticInfo{end+1} = 'Consider using the Compensation Controller design method';
                 end
                 
             catch ME
