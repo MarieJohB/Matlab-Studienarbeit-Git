@@ -1,28 +1,36 @@
 function [isStable, isProper, isStrictlyProper] = check_tf_conditions(tf_sys)
-    % check_tf_conditions überprüft, ob das Übertragungssystem tf_sys:
-    % - stabil ist (alle Pole haben negative Realteile),
-    % - proper ist (Grad des Zählers <= Grad des Nenners) und
-    % - strictly proper (Grad des Zählers < Grad des Nenners).
+    % CHECK_TF_CONDITIONS Check if a transfer function satisfies various conditions
     %
-    % Es werden boolesche Werte zurückgegeben, die später in der UI (z.B. in einer
-    % HTML-Tabelle) in entsprechende Symbole (z.B. Häkchen oder Kreuze) umgewandelt werden können.
+    % This function checks if the transfer function system tf_sys:
+    % - is stable (all poles have negative real parts, verified using Hurwitz criterion),
+    % - is proper (numerator degree ≤ denominator degree), and
+    % - is strictly proper (numerator degree < denominator degree).
+    %
+    % Input:
+    %   tf_sys - A transfer function object
+    %
+    % Output:
+    %   isStable - Boolean indicating stability (true if stable)
+    %   isProper - Boolean indicating if transfer function is proper
+    %   isStrictlyProper - Boolean indicating if transfer function is strictly proper
     
-    % Extrahiere die Koeffizienten der Zähler- und Nennerpolynome
+    % Extract the coefficients of the numerator and denominator polynomials
     [num, den] = tfdata(tf_sys, 'v');
+    
+    % Remove leading zeros for correct degree calculation
     num = removeLeadingZeros(num);
     den = removeLeadingZeros(den);
     
-    % Bestimme den Grad (Anzahl der Koeffizienten minus 1)
+    % Determine the degrees (number of coefficients minus 1)
     degNum = length(num) - 1;
     degDen = length(den) - 1;
     
-    % Properness: Zählergrad <= Nennergrad
+    % Check if proper: numerator degree ≤ denominator degree
     isProper = (degNum <= degDen);
     
-    % Strictly Proper: Zählergrad < Nennergrad
+    % Check if strictly proper: numerator degree < denominator degree
     isStrictlyProper = (degNum < degDen);
     
-    % Stabilität: Alle Pole haben negative Realteile
-    p = pole(tf_sys);
-    isStable = all(real(p) < 0);
+    % Check stability using Hurwitz criterion
+    isStable = check_stability_hurwitz(tf_sys);
 end
