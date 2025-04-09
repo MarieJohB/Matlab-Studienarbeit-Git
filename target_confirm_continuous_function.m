@@ -1,11 +1,25 @@
 function target_confirm_continuous_function(selection_fig, cont_fig, startField, endField, stepField, funcField)
+% TARGET_CONFIRM_CONTINUOUS_FUNCTION - Confirm the continuous function
+%
+% Parameters:
+%   selection_fig - The main selection figure
+%   cont_fig - The continuous function input figure
+%   startField - Start time edit field
+%   endField - End time edit field
+%   stepField - Time steps edit field
+%   funcField - Function edit field
+
 try
-    % Get time parameters
-    start_time = startField.Value;
-    end_time = endField.Value;
-    time_steps = stepField.Value;
+    % Get time parameters and convert to numbers
+    start_time = str2double(strrep(startField.Value, ',', '.'));
+    end_time = str2double(strrep(endField.Value, ',', '.'));
+    time_steps = str2double(strrep(stepField.Value, ',', '.'));
     
     % Validate time parameters
+    if isnan(start_time) || isnan(end_time) || isnan(time_steps)
+        error('Please enter valid numeric values for time parameters.');
+    end
+    
     if end_time <= start_time
         error('End Time must be greater than Start Time.');
     end
@@ -24,8 +38,8 @@ try
         error('Please enter a suitable size for time steps to divide the time span evenly.');
     end
     
-    % Get function string and replace commas with periods
-    funcStr = strrep(funcField.Value, ',', '.');
+    % Get function string
+    funcStr = funcField.Value;
     
     % Create function handle
     target_value = convert_string_to_function_handle(funcStr);

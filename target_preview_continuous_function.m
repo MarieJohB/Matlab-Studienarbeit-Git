@@ -1,20 +1,15 @@
 function target_preview_continuous_function(ax, startField, endField, stepField, funcField)
-% TARGET_PREVIEW_CONTINUOUS_FUNCTION - Preview the continuous function in the plot area
-%
-% Parameters:
-%   ax - The axes to plot in
-%   startField - Start time edit field
-%   endField - End time edit field
-%   stepField - Time steps edit field
-%   funcField - Function edit field
-
 try
-    % Get time parameters
-    start_time = startField.Value;
-    end_time = endField.Value;
-    time_steps = stepField.Value;
+    % Get time parameters and convert to numbers
+    start_time = str2double(strrep(startField.Value, ',', '.'));
+    end_time = str2double(strrep(endField.Value, ',', '.'));
+    time_steps = str2double(strrep(stepField.Value, ',', '.'));
     
     % Validate time parameters
+    if isnan(start_time) || isnan(end_time) || isnan(time_steps)
+        error('Please enter valid numeric values for time parameters.');
+    end
+    
     if end_time <= start_time
         error('End Time must be greater than Start Time.');
     end

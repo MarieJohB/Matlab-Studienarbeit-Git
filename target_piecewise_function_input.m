@@ -123,7 +123,7 @@ helpBtn = uibutton(buttonPanel, 'push', 'Text', 'Help', ...
     'ButtonPushedFcn', @(btn, event) showHelpDialog());
 
 % Function to update time steps and start times when cells are edited
-function updateTableValues(src, event)
+    function updateTableValues(src, event)
     % Get current table data
     data = src.Data;
     
@@ -131,9 +131,14 @@ function updateTableValues(src, event)
     if event.Indices(2) == 3 % Time Steps column
         % Get the new time step value
         newTimeStepStr = event.NewData;
-        if ischar(newTimeStepStr)
+        if ischar(newTimeStepStr) || isstring(newTimeStepStr)
             newTimeStepStr = strrep(newTimeStepStr, ',', '.');
             newTimeStep = str2double(newTimeStepStr);
+            if isnan(newTimeStep)
+                % If not a valid number after replacing commas, revert to previous value
+                uialert(ancestor(src, 'figure'), 'Please enter a valid number for Time Steps.', 'Invalid Input');
+                return;
+            end
         else
             newTimeStep = event.NewData;
         end
@@ -150,8 +155,16 @@ function updateTableValues(src, event)
         row = event.Indices(1);
         
         % Convert comma to period if needed
-        if ischar(event.NewData)
-            newData = str2double(strrep(event.NewData, ',', '.'));
+        if ischar(event.NewData) || isstring(event.NewData)
+            newDataStr = strrep(event.NewData, ',', '.');
+            newData = str2double(newDataStr);
+            if isnan(newData)
+                % If not a valid number after replacing commas, revert to previous value
+                uialert(ancestor(src, 'figure'), 'Please enter a valid number for End Time.', 'Invalid Input');
+                return;
+            end
+            % Update the current cell with the numeric value
+            data{row, 2} = newData;
         else
             newData = event.NewData;
         end
@@ -163,7 +176,23 @@ function updateTableValues(src, event)
             for nextRow = row+2:size(data, 1)
                 data{nextRow, 1} = data{nextRow-1, 2};
             end
-            
+        end
+        
+        % Update the table data
+        src.Data = data;
+    elseif event.Indices(2) == 1 % Start Time column
+        % If start time is edited, make sure it's a number
+        row = event.Indices(1);
+        
+        if ischar(event.NewData) || isstring(event.NewData)
+            newDataStr = strrep(event.NewData, ',', '.');
+            newData = str2double(newDataStr);
+            if isnan(newData)
+                % If not a valid number after replacing commas, revert to previous value
+                uialert(ancestor(src, 'figure'), 'Please enter a valid number for Start Time.', 'Invalid Input');
+                return;
+            end
+            data{row, 1} = newData;
             src.Data = data;
         end
     end

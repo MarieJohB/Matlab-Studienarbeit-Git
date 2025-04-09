@@ -49,13 +49,28 @@ startX = (panelWidth - totalFieldsWidth) / 2;
 
 % Time vector inputs with centered layout
 uilabel(timePanel, 'Text', 'Start Time:', 'Position', [10, 13, 80, 22], 'FontSize', 12);
-startField = uieditfield(timePanel, 'numeric', 'Position', [90, 13, 80, 22], 'Value', 0, 'FontSize', 12);
+startField = uieditfield(timePanel, 'text', 'Position', [90, 13, 80, 22], 'Value', '0', 'FontSize', 12);
+startField.ValueChangedFcn = @(field, event) formatDecimalField(field);
 
 uilabel(timePanel, 'Text', 'End Time:', 'Position', [220, 13, 80, 22], 'FontSize', 12);
-endField = uieditfield(timePanel, 'numeric', 'Position', [300, 13, 80, 22], 'Value', 10, 'FontSize', 12);
+endField = uieditfield(timePanel, 'text', 'Position', [300, 13, 80, 22], 'Value', '10', 'FontSize', 12);
+endField.ValueChangedFcn = @(field, event) formatDecimalField(field);
 
 uilabel(timePanel, 'Text', 'Time Steps:', 'Position', [430, 13, 80, 22], 'FontSize', 12);
-stepField = uieditfield(timePanel, 'numeric', 'Position', [510, 13, 80, 22], 'Value', 0.1, 'FontSize', 12);
+stepField = uieditfield(timePanel, 'text', 'Position', [510, 13, 80, 22], 'Value', '0.1', 'FontSize', 12);
+stepField.ValueChangedFcn = @(field, event) formatDecimalField(field);
+
+% Add helper function for formatting
+function formatDecimalField(field)
+    % Replace comma with dot for decimal values
+    field.Value = strrep(field.Value, ',', '.');
+    
+    % Validate that it's a valid number
+    if isnan(str2double(field.Value))
+        % If not a valid number, reset to default
+        field.Value = '0';
+    end
+end
 
 % Function input panel
 functionPanel = uipanel(cont_fig, 'Title', 'Function Definition', ...

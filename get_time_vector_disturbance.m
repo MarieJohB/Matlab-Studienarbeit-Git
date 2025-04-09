@@ -60,7 +60,7 @@ else
         if i == 1
             % First section: get all parameters
             prompt = {'Start Time:', 'End Time:', 'Time Steps:'};
-            dlgtitle = [disturbance_label ' Time Parameters'];
+            dlgtitle = 'Time Parameters';
             dims = [1 35];
             defaultans = {'0', '10', '0.1'};
             answer = inputdlg(prompt, dlgtitle, dims, defaultans);
@@ -82,6 +82,7 @@ else
             start_time(i) = str2double(start_time_str);
             end_time(i) = str2double(end_time_str);
             time_steps(i) = str2double(time_steps_str);
+            
         else
             % Subsequent sections: start time = end time of previous section
             start_time(i) = end_time(i-1);
@@ -91,10 +92,10 @@ else
             
             % Get end time and time steps
             prompt = {'End Time:', 'Time Steps:'};
-            dlgtitle = sprintf('%s Section %d Parameters', disturbance_label, i);
+            dlgtitle = sprintf('Section %d Parameters', i);
             dims = [1 35];
             defaultans = {num2str(start_time(i) + 10), '0.1'};
-            answer = inputdlg(prompt, dlgtitle, dims, defaultans);
+            answer = inputdlg(prompt, dlgtitle, dims, defaultans, 'on');
             
             % Check if user cancelled
             if isempty(answer)
@@ -114,7 +115,7 @@ else
         end
         
         % Validate input for this section
-        if ~validate_time_parameters_disturbance(start_time(i), end_time(i), time_steps(i))
+        if ~validateTimeParameters(start_time(i), end_time(i), time_steps(i))
             % Reset and try again if validation fails
             i = i - 1;
             continue;

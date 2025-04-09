@@ -10,12 +10,16 @@ function disturbance_confirm_continuous_function(selection_fig, cont_fig, startF
 %   funcField - Function edit field
 
 try
-    % Get time parameters
-    start_time = startField.Value;
-    end_time = endField.Value;
-    time_steps = stepField.Value;
+    % Get time parameters and convert to numbers
+    start_time = str2double(strrep(startField.Value, ',', '.'));
+    end_time = str2double(strrep(endField.Value, ',', '.'));
+    time_steps = str2double(strrep(stepField.Value, ',', '.'));
     
     % Validate time parameters
+    if isnan(start_time) || isnan(end_time) || isnan(time_steps)
+        error('Please enter valid numeric values for time parameters.');
+    end
+    
     if end_time <= start_time
         error('End Time must be greater than Start Time.');
     end

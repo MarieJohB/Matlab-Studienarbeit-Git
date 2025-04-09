@@ -1,11 +1,15 @@
 function disturbance_preview_continuous_function(ax, startField, endField, stepField, funcField, disturbance_label)
 try
-    % Get time parameters
-    start_time = startField.Value;
-    end_time = endField.Value;
-    time_steps = stepField.Value;
+    % Get time parameters and convert to numbers
+    start_time = str2double(strrep(startField.Value, ',', '.'));
+    end_time = str2double(strrep(endField.Value, ',', '.'));
+    time_steps = str2double(strrep(stepField.Value, ',', '.'));
     
     % Validate time parameters
+    if isnan(start_time) || isnan(end_time) || isnan(time_steps)
+        error('Please enter valid numeric values for time parameters.');
+    end
+    
     if end_time <= start_time
         error('End Time must be greater than Start Time.');
     end
@@ -16,9 +20,6 @@ try
     
     % Get function string
     funcStr = funcField.Value;
-    
-    % Replace commas with periods for numerical consistency
-    funcStr = strrep(funcStr, ',', '.');
     
     % If function is empty, show empty plot
     if isempty(funcStr)
@@ -38,6 +39,7 @@ try
     cla(ax);
     plot(ax, t, y);
     xlabel(ax, 'Time (s)');
+    % No y-label as requested
     title(ax, ['Function: ', funcStr]);
     grid(ax, 'on');
 catch ME
