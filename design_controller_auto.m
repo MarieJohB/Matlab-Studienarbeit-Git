@@ -169,12 +169,6 @@ function [K, details, score] = design_controller_auto(G, method, structure, opti
             case 'Loop-Shaping'
                 [K, details] = designLoopShaping(G, structure, options.phaseMargin, options.bandwidth, options.epsilon, plantInfo);
                 
-            case 'IMC (Internal Model Control)'
-                [K, details] = designIMC(G, structure, options.settlingTime, options.epsilon, plantInfo);
-                
-            case 'MIGO (M-constrained Integral Gain Optimization)'
-                [K, details] = designMIGO(G, structure, options.robustness, options.epsilon, plantInfo);
-                
             case 'Pole Placement'
                 [K, details] = designPolePlacement(G, structure, options, plantInfo);
                 
@@ -307,9 +301,7 @@ function method = selectBestMethod(G, plantInfo, structure, options)
     
     % Calculate a score for each method based on plant characteristics
     methods = {'Ziegler-Nichols (Oscillation)', 'Ziegler-Nichols (Step)', ...
-              'Aström', 'Loop-Shaping', 'IMC (Internal Model Control)', ...
-              'MIGO (M-constrained Integral Gain Optimization)', ...
-              'Pole Placement', 'Compensation Controller'};
+              'Aström', 'Loop-Shaping', 'Pole Placement', 'Compensation Controller'};
           
     % Initialize scores
     scores = zeros(1, length(methods));
@@ -432,24 +424,6 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
                 score = score - 20;  % Difficult combination
             end
             
-        case 'IMC (Internal Model Control)'
-            % Good for stable systems, especially with delays
-            if plantInfo.isUnstable
-                score = score - 30;
-            end
-            if plantInfo.hasDelay
-                score = score + 15;  % Good for delay systems
-            end
-            
-        case 'MIGO (M-constrained Integral Gain Optimization)'
-            % Good for many systems requiring robustness
-            if plantInfo.isUnstable && plantInfo.hasRHPZeros
-                score = score - 20;
-            end
-            if strcmpi(options.robustness, 'High')
-                score = score + 10;
-            end
-            
         case 'Pole Placement'
             % Good for state-space models and when precise dynamics are needed
             if isa(G, 'ss') || isfield(options, 'stateSpace')
@@ -483,7 +457,7 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
     % Controller structure-based adjustments
     if strcmpi(structure, 'P')
         % Simpler methods may be better for P controllers
-        if ismember(method, {'Ziegler-Nichols (Oscillation)', 'Loop-Shaping', 'MIGO (M-constrained Integral Gain Optimization)'})
+        if ismember(method, {'Ziegler-Nichols (Oscillation)', 'Loop-Shaping'})
             score = score + 5;
         end
       elseif strcmpi(structure, 'PID')
@@ -495,15 +469,15 @@ function score = evaluateMethodSuitability(method, G, plantInfo, structure, opti
     
     % Performance requirements-based adjustments
     if strcmpi(options.goal, 'Tracking')
-        if ismember(method, {'IMC (Internal Model Control)', 'Pole Placement'})
+        if ismember(method, {'Pole Placement'})
             score = score + 5;
         end
       elseif strcmpi(options.goal, 'Disturbance Rejection')
-        if ismember(method, {'MIGO (M-constrained Integral Gain Optimization)', 'Compensation Controller'})
+        if ismember(method, {'Compensation Controller'})
             score = score + 5;
         end
       elseif strcmpi(options.goal, 'Robustness')
-        if ismember(method, {'MIGO (M-constrained Integral Gain Optimization)', 'Compensation Controller'})
+        if ismember(method, {'Compensation Controller'})
             score = score + 10;
         end
     end

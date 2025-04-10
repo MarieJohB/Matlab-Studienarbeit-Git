@@ -430,8 +430,6 @@ function K = get_user_controller(G)
         'Ziegler-Nichols (Step)', isApplicable(G, 'ZN-Step'),
         'Aström', isApplicable(G, 'Astrom'),
         'Loop-Shaping', isApplicable(G, 'Loop-Shaping'),
-        'IMC (Internal Model Control)', isApplicable(G, 'IMC'),
-        'MIGO (M-constrained Integral Gain Optimization)', isApplicable(G, 'MIGO'),
         'Pole Placement', isApplicable(G, 'Pole-Placement'),
         'Compensation Controller', isApplicable(G, 'Compensation-Controller')
     };
@@ -649,17 +647,11 @@ function K = get_user_controller(G)
             '4. Loop-Shaping: Frequency-domain method focused on achieving desired loop shape.',
             '   • Best for: When specific bandwidth and phase margin are required.',
             '',
-            '5. IMC (Internal Model Control): Based on process model and desired closed-loop response.',
-            '   • Best for: Good disturbance rejection with specified settling time.',
-            '',
-            '6. MIGO: Maximizes integral gain while satisfying robustness constraints.',
-            '   • Best for: Good balance between performance and robustness.',
-            '',
-            '7. Pole Placement: Places closed-loop poles at desired locations.',
+            '5. Pole Placement: Places closed-loop poles at desired locations.',
             '   • Best for: Achieving specific time domain performance.',
             '   • Features: Direct control over system dynamics.',
             '',
-            '8. Compensation Controller: Directly compensates for plant dynamics.',
+            '6. Compensation Controller: Directly compensates for plant dynamics.',
             '   • Best for: Systems with problematic poles or zeros.',
             '   • Features: Cancels or modifies critical plant dynamics.',
             '   • Advantages: Can handle both stable and unstable systems with proper tuning.'
@@ -744,12 +736,6 @@ function K = get_user_controller(G)
                 applicable = isStable;
             case 'Loop-Shaping'
                 % All plants
-                applicable = true;
-            case 'IMC'
-                % Best for stable, minimum-phase plants but can be adapted
-                applicable = true;
-            case 'MIGO'
-                % For stable plants primarily
                 applicable = true;
             case 'Pole-Placement'
                 % Pole placement is applicable to almost all systems
