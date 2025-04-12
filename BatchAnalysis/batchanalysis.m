@@ -91,8 +91,8 @@ end
 batchResults = runBatchAnalysis([], G, K, paramInfo, analysisOptions, savePath);
 
 % Ask if user wants to visualize results
-resp = input('Do you want to visualize the results? (y/n): ', 's');
-if strcmpi(resp, 'y')
-    batchVisualization(batchResults, savePath);
-end
+%resp = input('Do you want to visualize the results? (y/n): ', 's');
+%if strcmpi(resp, 'y')
+%    batchVisualization(batchResults, savePath);
+%end
 end
