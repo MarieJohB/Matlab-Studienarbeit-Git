@@ -1,4 +1,20 @@
-function updateBodePlot(slider, event, magAxes, phaseAxes, batchResults, valueLabel)
+function updateBodePlot(slider, event, magAxes, phaseAxes, batchResults, valueLabel, compSlider, compValueLabel, compareMode)
+% UPDATEBODEPLOT - Updates Bode plots with current parameter value and optional comparison
+%
+% This function updates the magnitude and phase plots for Bode diagrams,
+% with support for comparing two different parameter values
+%
+% Inputs:
+%   slider - Parameter slider UI element
+%   event - Slider event data
+%   magAxes - Axes for magnitude plot
+%   phaseAxes - Axes for phase plot
+%   batchResults - Structure containing batch analysis results
+%   valueLabel - Label showing current parameter value
+%   compSlider - Comparison parameter slider
+%   compValueLabel - Label showing comparison parameter value
+%   compareMode - Boolean indicating if comparison mode is active
+
 % Get the current parameter index
 idx = round(event.Value);
 
@@ -28,65 +44,108 @@ phase = bodeData.phase;
 omega = bodeData.omega;
 
 % Plot magnitude
-semilogx(magAxes, omega, 20*log10(mag), 'LineWidth', 2);
+semilogx(magAxes, omega, 20*log10(mag), 'LineWidth', 2, 'DisplayName', sprintf('Parameter = %.4f', paramValue));
 
 % Set properties
-title(magAxes, sprintf('Bode Magnitude Plot for Parameter = %.4f', paramValue));
+title(magAxes, 'Bode Magnitude Plot');
 ylabel(magAxes, 'Magnitude (dB)');
 grid(magAxes, 'on');
+legend(magAxes, 'show', 'Location', 'southwest');
 
 % Add 0 dB line
 hold(magAxes, 'on');
-yline(magAxes, 0, 'r--', 'LineWidth', 1.5);
-hold(magAxes, 'off');
+yline(magAxes, 0, 'r--', 'LineWidth', 1.5, 'DisplayName', '0 dB');
 
 % Plot phase
-semilogx(phaseAxes, omega, phase, 'LineWidth', 2);
+semilogx(phaseAxes, omega, phase, 'LineWidth', 2, 'DisplayName', sprintf('Parameter = %.4f', paramValue));
 
 % Set properties
 title(phaseAxes, 'Bode Phase Plot');
 xlabel(phaseAxes, 'Frequency (rad/s)');
 ylabel(phaseAxes, 'Phase (degrees)');
 grid(phaseAxes, 'on');
+legend(phaseAxes, 'show', 'Location', 'southwest');
 
 % Add -180 degree line
 hold(phaseAxes, 'on');
-yline(phaseAxes, -180, 'r--', 'LineWidth', 1.5);
-hold(phaseAxes, 'off');
+yline(phaseAxes, -180, 'r--', 'LineWidth', 1.5, 'DisplayName', '-180°');
+
+% If in compare mode, add the comparison plot
+if compareMode
+    compIdx = round(compSlider.Value);
+    compValue = batchResults.paramValues(compIdx);
+    
+    % Skip if trying to compare with itself
+    if compIdx ~= idx
+        compData = batchResults.bode{compIdx};
+        
+        if ~isempty(compData)
+            % Plot comparison magnitude
+            semilogx(magAxes, compData.omega, 20*log10(compData.magnitude), 'LineWidth', 2, ...
+                'LineStyle', '--', 'Color', [0.8 0.4 0], ...
+                'DisplayName', sprintf('Compare = %.4f', compValue));
+            
+            % Plot comparison phase
+            semilogx(phaseAxes, compData.omega, compData.phase, 'LineWidth', 2, ...
+                'LineStyle', '--', 'Color', [0.8 0.4 0], ...
+                'DisplayName', sprintf('Compare = %.4f', compValue));
+            
+            % Draw a little legend in the corner explaining the comparison
+            annotation('textbox', [0.65 0.95 0.3 0.04], ...
+                'String', 'Solid: Current - Dashed: Comparison', ...
+                'EdgeColor', 'none', 'FontSize', 9);
+        end
+    end
+end
 
 % Also plot phase and gain margins if possible
 try
     % Extract margins from current Bode data
     [Gm, Pm, Wcg, Wcp] = calcMargins(mag, phase, omega);
     
-    if ~isnan(Gm) && ~isnan(Wcg)
+    if ~isnan(Gm) && ~isnan(Wcp)
         % Draw gain margin
-        hold(magAxes, 'on');
-        xline(magAxes, Wcg, 'g-', 'LineWidth', 1.5);
-        text(magAxes, Wcg, -5, sprintf('Gain Margin: %.2f dB', 20*log10(Gm)), ...
-            'Color', 'g', 'FontWeight', 'bold');
-        hold(magAxes, 'off');
+        xline(magAxes, Wcp, 'g-', 'LineWidth', 1.5, 'DisplayName', sprintf('Gain Margin: %.2f dB', 20*log10(Gm)));
         
         % Mark phase crossover on phase plot
-        hold(phaseAxes, 'on');
-        plot(phaseAxes, Wcp, -180, 'go', 'MarkerSize', 8, 'MarkerFaceColor', 'g');
-        hold(phaseAxes, 'off');
+        plot(phaseAxes, Wcp, -180, 'go', 'MarkerSize', 8, 'MarkerFaceColor', 'g', 'DisplayName', 'Phase Crossover');
     end
     
-    if ~isnan(Pm) && ~isnan(Wcp)
+    if ~isnan(Pm) && ~isnan(Wcg)
         % Draw phase margin
-        hold(phaseAxes, 'on');
-        xline(phaseAxes, Wcp, 'b-', 'LineWidth', 1.5);
-        text(phaseAxes, Wcp, -160, sprintf('Phase Margin: %.2f°', Pm), ...
-            'Color', 'b', 'FontWeight', 'bold');
-        hold(phaseAxes, 'off');
+        xline(phaseAxes, Wcg, 'b-', 'LineWidth', 1.5, 'DisplayName', sprintf('Phase Margin: %.2f°', Pm));
         
         % Mark gain crossover on magnitude plot
-        hold(magAxes, 'on');
-        plot(magAxes, Wcp, 0, 'bo', 'MarkerSize', 8, 'MarkerFaceColor', 'b');
-        hold(magAxes, 'off');
+        plot(magAxes, Wcg, 0, 'bo', 'MarkerSize', 8, 'MarkerFaceColor', 'b', 'DisplayName', 'Gain Crossover');
+    end
+    
+    % If in compare mode, also show margins for comparison parameter
+    if compareMode && compIdx ~= idx
+        compData = batchResults.bode{compIdx};
+        if ~isempty(compData)
+            try
+                [compGm, compPm, compWcg, compWcp] = calcMargins(compData.magnitude, compData.phase, compData.omega);
+                
+                if ~isnan(compGm) && ~isnan(compWcp)
+                    % Draw gain margin for comparison (dashed)
+                    xline(magAxes, compWcp, 'g--', 'LineWidth', 1.5, 'DisplayName', ...
+                        sprintf('Comp GM: %.2f dB', 20*log10(compGm)));
+                end
+                
+                if ~isnan(compPm) && ~isnan(compWcg)
+                    % Draw phase margin for comparison (dashed)
+                    xline(phaseAxes, compWcg, 'b--', 'LineWidth', 1.5, 'DisplayName', ...
+                        sprintf('Comp PM: %.2f°', compPm));
+                end
+            catch
+                % Skip comparison margins if they can't be calculated
+            end
+        end
     end
 catch
     % Skip margin indications if they can't be calculated
 end
+
+hold(magAxes, 'off');
+hold(phaseAxes, 'off');
 end

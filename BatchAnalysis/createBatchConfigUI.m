@@ -1,6 +1,6 @@
 function createBatchConfigUI()
 % Create figure for batch configuration
-batchFig = uifigure('Name', 'Control Loop Batch Analysis', 'Position', [300 150 800 700]);
+batchFig = uifigure('Name', 'Control Loop Batch Analysis', 'Position', [300 150 720 550]);
 batchFig.Color = [1 1 1];
 
 % Define consistent colors for styling (matching design_controller_auto style)
@@ -15,92 +15,85 @@ appColors = struct(...
     'lightText', [1 1 1]);                  % White text for dark backgrounds
 
 % Main title panel
-titlePanel = uipanel(batchFig, 'Position', [50 650 700 40], ...
+titlePanel = uipanel(batchFig, 'Position', [10 520 700 30], ...
     'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
-titleLabel = uilabel(titlePanel, 'Position', [0 0 700 40], ...
+titleLabel = uilabel(titlePanel, 'Position', [0 0 700 30], ...
     'Text', 'Control Loop Batch Analysis', ...
     'HorizontalAlignment', 'center', 'FontSize', 20, 'FontWeight', 'bold', ...
     'FontColor', appColors.lightText);
 
 % Create panels for different sections
 transferFunctionsPanel = uipanel(batchFig, 'Title', 'Transfer Functions', ...
-    'Position', [50 450 700 180], 'FontWeight', 'bold', ...
+    'Position', [10 330 700 180], 'FontWeight', 'bold', ...
     'BackgroundColor', appColors.panelBg, 'TitlePosition', 'centertop');
 
 sweepPanel = uipanel(batchFig, 'Title', 'Parameter Sweep Configuration', ...
-    'Position', [50 250 700 180], 'FontWeight', 'bold', ...
+    'Position', [10 260 700 60], 'FontWeight', 'bold', ...
     'BackgroundColor', appColors.panelBg, 'TitlePosition', 'centertop');
 
 analysisPanel = uipanel(batchFig, 'Title', 'Analyses to Run', ...
-    'Position', [50 150 700 80], 'FontWeight', 'bold', ...
+    'Position', [10 170 700 80], 'FontWeight', 'bold', ...
     'BackgroundColor', appColors.panelBg, 'TitlePosition', 'centertop');
 
 savePanel = uipanel(batchFig, 'Title', 'Save Configuration', ...
-    'Position', [50 70 700 60], 'FontWeight', 'bold', ...
+    'Position', [10 100 700 60], 'FontWeight', 'bold', ...
     'BackgroundColor', appColors.panelBg, 'TitlePosition', 'centertop');
 
-% Transfer function visualization and inputs based on provided sketch
-% Two display boxes for G(s) and K(s) at the top
-gBoxPanel = uipanel(transferFunctionsPanel, 'Position', [20 95 320 75], ...
-    'BackgroundColor', [1 1 1], 'BorderType', 'line');
-kBoxPanel = uipanel(transferFunctionsPanel, 'Position', [360 95 320 75], ...
-    'BackgroundColor', [1 1 1], 'BorderType', 'line');
-
 % Labels for G(s) and K(s) display boxes
-uilabel(gBoxPanel, 'Position', [10 45 50 22], 'Text', 'G(s) =', 'FontWeight', 'bold');
-uilabel(kBoxPanel, 'Position', [10 45 50 22], 'Text', 'K(s) =', 'FontWeight', 'bold');
+uilabel(transferFunctionsPanel, 'Position', [30 110 50 22], 'Text', 'G(s) =', 'FontWeight', 'bold');
+uilabel(transferFunctionsPanel, 'Position', [370 110 50 22], 'Text', 'K(s) =', 'FontWeight', 'bold');
 
 % HTML visualizations inside boxes
-gHTMLPreview = uihtml(gBoxPanel, 'Position', [70 10 230 65]);
-kHTMLPreview = uihtml(kBoxPanel, 'Position', [70 10 230 65]);
+gHTMLPreview = uihtml(transferFunctionsPanel, 'Position', [110 85 230 75]);
+kHTMLPreview = uihtml(transferFunctionsPanel, 'Position', [450 85 230 75]);
 
 % Input fields for numerator and denominator coefficients
 % G(s) inputs
-gNumLabel = uilabel(transferFunctionsPanel, 'Position', [20 60 80 22], 'Text', 'Numerator:');
-gNumEdit = uitextarea(transferFunctionsPanel, 'Position', [110 60 230 22], 'Value', {'1'});
+gNumLabel = uilabel(transferFunctionsPanel, 'Position', [20 65 80 22], 'Text', 'Numerator:');
+gNumEdit = uitextarea(transferFunctionsPanel, 'Position', [110 65 230 22], 'Value', {'1'});
 
-gDenLabel = uilabel(transferFunctionsPanel, 'Position', [20 30 80 22], 'Text', 'Denominator:');
-gDenEdit = uitextarea(transferFunctionsPanel, 'Position', [110 30 230 22], 'Value', {'1 1'});
+gDenLabel = uilabel(transferFunctionsPanel, 'Position', [20 35 80 22], 'Text', 'Denominator:');
+gDenEdit = uitextarea(transferFunctionsPanel, 'Position', [110 35 230 22], 'Value', {'1 1'});
 
 % K(s) inputs
-kNumLabel = uilabel(transferFunctionsPanel, 'Position', [360 60 80 22], 'Text', 'Numerator:');
-kNumEdit = uitextarea(transferFunctionsPanel, 'Position', [450 60 230 22], 'Value', {'1'});
+kNumLabel = uilabel(transferFunctionsPanel, 'Position', [360 65 80 22], 'Text', 'Numerator:');
+kNumEdit = uitextarea(transferFunctionsPanel, 'Position', [450 65 230 22], 'Value', {'1'});
 
-kDenLabel = uilabel(transferFunctionsPanel, 'Position', [360 30 80 22], 'Text', 'Denominator:');
-kDenEdit = uitextarea(transferFunctionsPanel, 'Position', [450 30 230 22], 'Value', {'1'});
+kDenLabel = uilabel(transferFunctionsPanel, 'Position', [360 35 80 22], 'Text', 'Denominator:');
+kDenEdit = uitextarea(transferFunctionsPanel, 'Position', [450 35 230 22], 'Value', {'1'});
 
 % Update button in the center
 previewButton = uibutton(transferFunctionsPanel, 'Text', 'Update', ...
-    'Position', [300 45 100 30], 'ButtonPushedFcn', @(btn,event) updateTransferFunctionDisplay(), ...
+    'Position', [300 5 100 25], 'ButtonPushedFcn', @(btn,event) updateTransferFunctionDisplay(), ...
     'BackgroundColor', appColors.primary, 'FontColor', appColors.lightText);
 
 % Parameter sweep configuration
 % Parameter dropdown with more space and better layout
-uilabel(sweepPanel, 'Position', [50 120 150 22], 'Text', 'Parameter to Sweep:');
-paramDropdown = uidropdown(sweepPanel, 'Position', [250 120 400 25], ...
+uilabel(sweepPanel, 'Position', [10 10 130 20], 'Text', 'Parameter to Sweep:');
+paramDropdown = uidropdown(sweepPanel, 'Position', [135 10 140 20], ...
     'Items', {'G: Numerator [1]', 'G: Denominator [1]', 'G: Denominator [2]', ...
               'K: Numerator [1]', 'K: Denominator [1]'});
 
 % Min, max, step inputs with better layout
-uilabel(sweepPanel, 'Position', [50 80 150 22], 'Text', 'Min Value:');
-minEdit = uieditfield(sweepPanel, 'numeric', 'Position', [250 80 400 25], 'Value', 0.1);
+uilabel(sweepPanel, 'Position', [295 10 60 20], 'Text', 'Min Value:');
+minEdit = uieditfield(sweepPanel, 'numeric', 'Position', [355 10 60 20], 'Value', 0.1);
 
-uilabel(sweepPanel, 'Position', [50 50 150 22], 'Text', 'Max Value:');
-maxEdit = uieditfield(sweepPanel, 'numeric', 'Position', [250 50 400 25], 'Value', 10);
+uilabel(sweepPanel, 'Position', [430 10 60 20], 'Text', 'Max Value:');
+maxEdit = uieditfield(sweepPanel, 'numeric', 'Position', [495 10 60 20], 'Value', 10);
 
-uilabel(sweepPanel, 'Position', [50 20 150 22], 'Text', 'Step Size:');
-stepEdit = uieditfield(sweepPanel, 'numeric', 'Position', [250 20 400 25], 'Value', 0.5);
+uilabel(sweepPanel, 'Position', [570 10 60 20], 'Text', 'Step Size:');
+stepEdit = uieditfield(sweepPanel, 'numeric', 'Position', [630 10 60 20], 'Value', 0.5);
 
 % Analysis selection - centered and equally distributed checkboxes
 checkboxWidth = 170;
 checkboxSpacing = 40;
-checkboxTop = 40;
-checkboxHeight = 22;
+checkboxTop = 33;
+checkboxHeight = 20;
 
 % Calculate positions to center the checkboxes in the panel
 panelWidth = 700;
 totalCheckboxWidth = 3 * checkboxWidth + 2 * checkboxSpacing;
-leftMargin = (panelWidth - totalCheckboxWidth) / 2;
+leftMargin = (panelWidth - totalCheckboxWidth) / 2 + 30;
 
 % First row
 stabCheckbox = uicheckbox(analysisPanel, 'Text', 'Stability Analysis', ...
@@ -120,26 +113,28 @@ jumpCheckbox = uicheckbox(analysisPanel, 'Text', 'Jump Analysis', ...
     'Position', [leftMargin + 2 * (checkboxWidth + checkboxSpacing) checkboxTop2 checkboxWidth checkboxHeight], 'Value', true);
 
 % Save configuration
-uilabel(savePanel, 'Position', [20 20 100 22], 'Text', 'Save Results To:');
-savePathEdit = uieditfield(savePanel, 'text', 'Position', [130 20 440 22], 'Value', '');
-browseButton = uibutton(savePanel, 'Text', 'Browse...', 'Position', [580 20 100 22], ...
+uilabel(savePanel, 'Position', [20 10 100 20], 'Text', 'Save Results To:');
+savePathEdit = uieditfield(savePanel, 'text', 'Position', [130 10 440 20], 'Value', '');
+browseButton = uibutton(savePanel, 'Text', 'Browse...', 'Position', [580 10 100 20], ...
     'ButtonPushedFcn', @(btn,event) browseSavePath(savePathEdit), ...
     'BackgroundColor', appColors.primary, 'FontColor', appColors.lightText);
 
 % Action buttons layout
-buttonPanelHeight = 50;
-buttonPanel = uipanel(batchFig, 'Position', [50 10 700 buttonPanelHeight], ...
-    'BackgroundColor', appColors.background, 'BorderType', 'none');
+buttonPanelHeight = 80;
 
-cancelButton = uibutton(buttonPanel, 'Text', 'Cancel', 'Position', [150 10 120 30], ...
+buttonPanel = uipanel(batchFig, 'Title', 'Actions', ...
+    'Position', [10 10 700 buttonPanelHeight], 'FontWeight', 'bold', ...
+    'BackgroundColor', appColors.panelBg, 'TitlePosition', 'centertop');
+
+cancelButton = uibutton(buttonPanel, 'Text', 'Cancel', 'Position', [120 15 120 30], ...
     'BackgroundColor', appColors.cancel, 'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn,event) close(batchFig));
 
-startButton = uibutton(buttonPanel, 'Text', 'Start Batch Analysis', 'Position', [290 10 200 30], ...
+startButton = uibutton(buttonPanel, 'Text', 'Start Batch Analysis', 'Position', [250 10 200 40], ...
     'BackgroundColor', appColors.confirm, 'FontColor', appColors.lightText, 'FontSize', 14, 'FontWeight', 'bold', ...
     'ButtonPushedFcn', @(btn,event) startBatchAnalysis());
 
-loadButton = uibutton(buttonPanel, 'Text', 'Load Results', 'Position', [510 10 120 30], ...
+loadButton = uibutton(buttonPanel, 'Text', 'Load Results', 'Position', [460 15 120 30], ...
     'BackgroundColor', appColors.primary, 'FontColor', appColors.lightText, ...
     'ButtonPushedFcn', @(btn,event) loadBatchResults());
 
@@ -193,8 +188,8 @@ updateTransferFunctionDisplay();
             updateParameterDropdown(gNum, gDen, kNum, kDen);
             
         catch ME
-            % Show error message
-            uialert(batchFig, ['Error in transfer function: ' ME.message], 'Invalid Transfer Function', 'error');
+            % Show error message - FIXED: Use correct uialert syntax
+            uialert(batchFig, ['Error in transfer function: ' ME.message], 'Invalid Transfer Function');
         end
     end
 
@@ -329,10 +324,12 @@ updateTransferFunctionDisplay();
                 % Visualize results
                 batchVisualization(data.batchResults, fullPath);
             else
-                uialert(batchFig, 'The selected file does not contain valid batch analysis results.', 'Invalid File', 'error');
+                % FIXED: Corrected uialert syntax - removed 'error' parameter
+                uialert(batchFig, 'The selected file does not contain valid batch analysis results.', 'Invalid File');
             end
         catch ME
-            uialert(batchFig, ['Error loading file: ' ME.message], 'Load Error', 'error');
+            % FIXED: Corrected uialert syntax - removed 'error' parameter
+            uialert(batchFig, ['Error loading file: ' ME.message], 'Load Error');
         end
     end
 
@@ -372,7 +369,8 @@ updateTransferFunctionDisplay();
             
             % Ensure bode is enabled if margins are requested
             if analysisOptions.margins && ~analysisOptions.bode
-                uialert(batchFig, 'Enabling Bode analysis because margins calculation requires it', 'Information', 'info');
+                % FIXED: Corrected uialert syntax - removed 'info' parameter
+                uialert(batchFig, 'Enabling Bode analysis because margins calculation requires it', 'Information');
                 analysisOptions.bode = true;
             end
             
@@ -398,7 +396,8 @@ updateTransferFunctionDisplay();
             batchVisualization(batchResults, savePath);
             
         catch ME
-            uialert(batchFig, ['Error starting batch analysis: ' ME.message], 'Error', 'error');
+            % FIXED: Corrected uialert syntax - removed 'error' parameter
+            uialert(batchFig, ['Error starting batch analysis: ' ME.message], 'Error');
         end
     end
 

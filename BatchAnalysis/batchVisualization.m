@@ -8,17 +8,45 @@ function batchVisualization(batchResults, resultsFile)
 %   batchResults - Structure containing batch analysis results
 %   resultsFile - Path to the file where results are saved
 
-% Create figure for results visualization
-resultsFig = uifigure('Name', 'Batch Analysis Results', 'Position', [100 100 1000 700]);
+% Create figure for results visualization with full HD size
+resultsFig = uifigure('Name', 'Batch Analysis Results', 'Position', [0 0 1920 1080]);
 resultsFig.Color = [1 1 1];
 
-% Add file info
-[~, fileName, ext] = fileparts(resultsFile);
-uilabel(resultsFig, 'Position', [20 670 960 20], 'Text', ['Results File: ' fileName ext], ...
-    'HorizontalAlignment', 'center', 'FontWeight', 'bold');
+% Define consistent colors for styling
+appColors = struct(...
+    'background', [0.95 0.95 0.97], ...     % Light gray background
+    'panelHeader', [0.2 0.4 0.7], ...       % Blue header
+    'panelBg', [0.95 0.95 0.97], ...        % Light gray panel
+    'primary', [0.3 0.6 0.9], ...           % Blue buttons
+    'confirm', [0.3 0.8 0.3], ...           % Green confirm button
+    'cancel', [0.8 0.3 0.3], ...            % Red cancel button
+    'text', [0.2 0.2 0.2], ...              % Dark text
+    'lightText', [1 1 1]);                  % White text for dark backgrounds
 
-% Create tabs for different analyses
-resultsTabs = uitabgroup(resultsFig, 'Position', [10 10 980 650]);
+% Create header panel
+headerPanel = uipanel(resultsFig, 'Position', [10 1010 1900 60], ...
+    'BackgroundColor', appColors.panelHeader, 'BorderType', 'none');
+
+% Add file info and title to header - centered alignment
+[~, fileName, ext] = fileparts(resultsFile);
+
+% Center-aligned title
+uilabel(headerPanel, 'Position', [10 30 1880 25], 'Text', 'Batch Analysis Results', ...
+    'FontSize', 18, 'FontWeight', 'bold', 'FontColor', appColors.lightText, ...
+    'HorizontalAlignment', 'center');
+
+% Center-aligned filename
+uilabel(headerPanel, 'Position', [10 5 1880 22], 'Text', ['File: ' fileName ext], ...
+    'FontSize', 12, 'FontColor', appColors.lightText, 'HorizontalAlignment', 'center');
+
+% Add Load button directly on the header panel
+loadButton = uibutton(headerPanel, 'push', 'Text', 'Load Results', ...
+    'Position', [1770 15 120 30], 'FontSize', 12, ...
+    'BackgroundColor', [0.1 0.3 0.6], 'FontColor', appColors.lightText, ...
+    'ButtonPushedFcn', @(btn,event) loadResults(resultsFig));
+
+% Create tabs for different analyses with full HD size
+resultsTabs = uitabgroup(resultsFig, 'Position', [10 10 1900 990]);
 
 % Summary tab
 summaryTab = uitab(resultsTabs, 'Title', 'Summary');
@@ -53,5 +81,45 @@ end
 if isfield(batchResults, 'jump') && ~isempty(batchResults.jump{1})
     jumpTab = uitab(resultsTabs, 'Title', 'Jump Analysis');
     createJumpTab(jumpTab, batchResults);
+end
+
+% Function to handle loading new results
+function loadResults(fig)
+    % Prompt for file
+    [file, path] = uigetfile('*.mat', 'Load Batch Analysis Results');
+    if isequal(file, 0) || isequal(path, 0)
+        % User cancelled
+        return;
+    end
+    
+    % Full path
+    fullPath = fullfile(path, file);
+    
+    % Load results
+    try
+        data = load(fullPath);
+        if isfield(data, 'batchResults')
+            % Ask user what to do
+            choice = uiconfirm(fig, 'Do you want to replace the current results or open in a new window?', ...
+                'Load Options', 'Options', {'Replace Current', 'New Window', 'Cancel'}, ...
+                'DefaultOption', 2, 'CancelOption', 3);
+            
+            switch choice
+                case 'Replace Current'
+                    % Close current figure and create new one with the loaded data
+                    delete(fig);
+                    batchVisualization(data.batchResults, fullPath);
+                case 'New Window'
+                    % Create a new instance with the loaded data
+                    batchVisualization(data.batchResults, fullPath);
+                otherwise
+                    % Do nothing (cancel)
+            end
+        else
+            uialert(fig, 'The selected file does not contain valid batch analysis results.', 'Invalid File');
+        end
+    catch ME
+        uialert(fig, ['Error loading file: ' ME.message], 'Load Error');
+    end
 end
 end
