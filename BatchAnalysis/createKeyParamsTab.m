@@ -1,6 +1,6 @@
 function createKeyParamsTab(tab, batchResults)
 % CREATEKEYPARAMSTAB - Creates the key parameters visualization tab
-% with improved table visibility - optimized for 1920x1080 resolution
+% with plots directly on tab - optimized for 1920x1080 resolution
 %
 % Inputs:
 %   tab - Parent UI tab object
@@ -32,15 +32,15 @@ for i = 1:numPoints
     end
 end
 
-% Create panels for plots - sized for 1920x1080
-plotPanel = uipanel(tab, 'Title', 'Time Response Parameters', ...
-    'Position', [50 400 1800 570], 'FontWeight', 'bold', 'FontSize', 16);
+% Add title label for plots
+uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Time Response Parameters', ...
+    'FontWeight', 'bold', 'FontSize', 16);
 
-% Create 2x2 layout of axes with improved positions for fullscreen
-riseAxes = uiaxes(plotPanel, 'Position', [50 310 850 240]);
-settlingAxes = uiaxes(plotPanel, 'Position', [920 310 850 240]);
-overshootAxes = uiaxes(plotPanel, 'Position', [50 50 850 240]);
-peakAxes = uiaxes(plotPanel, 'Position', [920 50 850 240]);
+% Create 2x2 layout of axes directly on tab
+riseAxes = uiaxes(tab, 'Position', [50 710 850 240]);
+settlingAxes = uiaxes(tab, 'Position', [920 710 850 240]);
+overshootAxes = uiaxes(tab, 'Position', [50 450 850 240]);
+peakAxes = uiaxes(tab, 'Position', [920 450 850 240]);
 
 % Plot rise time with improved styling
 plot(riseAxes, paramValues, riseTime, 'b-o', 'LineWidth', 2.5, 'MarkerSize', 8);
@@ -70,9 +70,9 @@ xlabel(peakAxes, 'Parameter Value', 'FontSize', 12);
 ylabel(peakAxes, 'Peak Time (s)', 'FontSize', 12);
 grid(peakAxes, 'on');
 
-% Create panel for threshold analysis
-thresholdPanel = uipanel(tab, 'Title', 'Performance Metrics Analysis', ...
-    'Position', [50 50 1800 340], 'FontWeight', 'bold', 'FontSize', 16);
+% Add title label for performance metrics
+uilabel(tab, 'Position', [50 400 400 20], 'Text', 'Performance Metrics Analysis', ...
+    'FontWeight', 'bold', 'FontSize', 16);
 
 % Define thresholds for good performance
 maxRiseTime = 1.5;     % seconds
@@ -83,7 +83,7 @@ maxOvershoot = 20.0;   % percent
 validCount = sum(~isnan(riseTime));
 if validCount == 0
     % No valid data points
-    uilabel(thresholdPanel, 'Position', [750 150 300 40], 'Text', 'No valid time-domain data available', ...
+    uilabel(tab, 'Position', [750 200 300 40], 'Text', 'No valid time-domain data available', ...
         'FontWeight', 'bold', 'FontSize', 16, 'HorizontalAlignment', 'center');
     return;
 end
@@ -125,7 +125,7 @@ else
     bestParamIdx = NaN;
 end
 
-% Create HTML table with threshold information - enhanced for 1920x1080
+% Create HTML table with threshold information - directly on tab
 htmlContent = ['<html><head><style>', ...
     'table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }', ...
     'th { background-color: #4472C4; color: white; padding: 8px; text-align: center; font-size: 16px; }', ...
@@ -211,6 +211,6 @@ end
 
 htmlContent = [htmlContent, '</table></body></html>'];
 
-% Create HTML component that's fully visible - sized for 1920x1080
-thresholdHtml = uihtml(thresholdPanel, 'HTMLSource', htmlContent, 'Position', [50 20 1700 300]);
+% Create HTML component directly on tab
+thresholdHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1700 300]);
 end

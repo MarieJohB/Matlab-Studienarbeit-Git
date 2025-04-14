@@ -12,25 +12,17 @@ function createBodeTab(tab, batchResults)
 % Extract parameter values
 paramValues = batchResults.paramValues;
 
-% Add title label
-uilabel(tab, 'Position', [50 950 400 30], 'Text', 'Bode Diagram', ...
-    'FontWeight', 'bold', 'FontSize', 16);
-
 % Create axes for Bode plots directly on tab for fullscreen
 magAxes = uiaxes(tab, 'Position', [50 500 1800 450]);
 phaseAxes = uiaxes(tab, 'Position', [50 150 1800 350]);
 
-% Add parameter selection controls label
-uilabel(tab, 'Position', [50 120 250 30], 'Text', 'Parameter Selection', ...
-    'FontWeight', 'bold', 'FontSize', 16);
-
 % Create mode selection button group directly on tab
 modePanel = uibuttongroup(tab, 'Title', 'Display Mode', ...
-    'Position', [100 60 200 60], 'SelectionChangedFcn', @modeChanged, 'FontSize', 14);
+    'Position', [100 60 300 60], 'SelectionChangedFcn', @modeChanged, 'FontSize', 14);
 singleMode = uiradiobutton(modePanel, 'Text', 'Single Plot', ...
-    'Position', [20 10 160 30], 'Value', true, 'FontSize', 14);
+    'Position', [20 5 160 30], 'Value', true, 'FontSize', 14);
 compareMode = uiradiobutton(modePanel, 'Text', 'Compare', ...
-    'Position', [20 -20 160 30], 'FontSize', 14);
+    'Position', [180 5 160 30], 'FontSize', 14);
 
 % Create dropdown for primary parameter
 uilabel(tab, 'Position', [350 80 160 30], 'Text', 'Primary Parameter:', ...
@@ -50,17 +42,6 @@ comparisonDropdown = uidropdown(tab, ...
     'Value', sprintf('%.6f', paramValues(min(2, length(paramValues)))), ...
     'Enable', 'off', ...
     'ValueChangedFcn', @(dd, event) updateBodePlot(), 'FontSize', 14);
-
-% Add labels to explain the parameters beneath the dropdowns
-uilabel(tab, 'Position', [520 50 280 30], 'Text', 'Solid Line', ...
-    'FontSize', 14, 'HorizontalAlignment', 'center');
-compLabel = uilabel(tab, 'Position', [1040 50 280 30], 'Text', 'Dashed Line', ...
-    'FontSize', 14, 'HorizontalAlignment', 'center', 'Visible', 'off');
-
-% Add legend explanation for comparison
-legendExplanation = uilabel(tab, 'Position', [1350 65 400 40], ...
-    'Text', 'Solid: Primary Parameter - Dashed: Comparison', ...
-    'FontSize', 14, 'HorizontalAlignment', 'center', 'Visible', 'off');
 
 % Initial plot
 updateBodePlot();

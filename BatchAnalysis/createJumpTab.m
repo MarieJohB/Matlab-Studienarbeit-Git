@@ -1,6 +1,6 @@
 function createJumpTab(tab, batchResults)
-% CREATEJUMPTAB - Creates jump analysis plots across the parameter range
-% with improved layout and fully visible tables - optimized for 1920x1080 resolution
+% CREATEJUMPTAB - Creates jump analysis plots directly on the tab
+% optimized for 1920x1080 resolution
 %
 % Inputs:
 %   tab - Parent UI tab object
@@ -26,13 +26,13 @@ for i = 1:numPoints
     end
 end
 
-% Create panel for plots - sized for 1920x1080
-plotPanel = uipanel(tab, 'Title', 'Steady State Response', ...
-    'Position', [50 400 1800 570], 'FontWeight', 'bold', 'FontSize', 16);
+% Add title label for steady state response
+uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Steady State Response', ...
+    'FontWeight', 'bold', 'FontSize', 16);
 
-% Create axes with improved positions for fullscreen
-outputAxes = uiaxes(plotPanel, 'Position', [80 310 1640 240]);
-errorAxes = uiaxes(plotPanel, 'Position', [80 50 1640 240]);
+% Create axes directly on tab
+outputAxes = uiaxes(tab, 'Position', [80 710 1640 240]);
+errorAxes = uiaxes(tab, 'Position', [80 450 1640 240]);
 
 % Plot steady state output with improved styling
 plot(outputAxes, paramValues, steadyStateOutput, 'b-o', 'LineWidth', 2.5, 'MarkerSize', 8);
@@ -60,11 +60,10 @@ yline(errorAxes, 0, 'g--', 'LineWidth', 2);
 text(errorAxes, paramValues(1), 0.05, 'Zero Error', 'Color', 'g', 'FontSize', 12);
 hold(errorAxes, 'off');
 
-% Create panel for jumpability analysis
-jumpPanel = uipanel(tab, 'Title', 'Jumpability Analysis', ...
-    'Position', [50 50 1800 340], 'FontWeight', 'bold', 'FontSize', 16);
+% Add title label for jumpability analysis
+uilabel(tab, 'Position', [50 400 400 20], 'Text', 'Jumpability Analysis', ...
+    'FontWeight', 'bold', 'FontSize', 16);
 
-% Create jumpability table with HTML in dedicated panel
 % Define threshold for "jumpable" - steady state error near zero
 errorThreshold = 0.01;
 
@@ -75,7 +74,7 @@ validCount = sum(~isnan(steadyStateError));
 
 if validCount == 0
     % No valid data points
-    uilabel(jumpPanel, 'Position', [750 150 300 40], 'Text', 'No valid steady-state data available', ...
+    uilabel(tab, 'Position', [750 200 300 40], 'Text', 'No valid steady-state data available', ...
         'FontWeight', 'bold', 'FontSize', 16, 'HorizontalAlignment', 'center');
     return;
 end
@@ -85,7 +84,7 @@ jumpablePercent = jumpableCount / validCount * 100;
 % Find parameter ranges where system is jumpable
 jumpableRanges = findJumpableRanges(paramValues, isJumpable);
 
-% Create HTML content - enhanced for 1920x1080
+% Create HTML content - enhanced for 1920x1080 directly on tab
 htmlContent = ['<html><head><style>', ...
     'table { border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; }', ...
     'th { background-color: #4472C4; color: white; padding: 8px; text-align: center; font-size: 16px; }', ...
@@ -204,6 +203,6 @@ end
 
 htmlContent = [htmlContent, '</table></body></html>'];
 
-% Create HTML component that's fully visible - sized for 1920x1080
-jumpHTML = uihtml(jumpPanel, 'HTMLSource', htmlContent, 'Position', [50 20 1700 300]);
+% Create HTML component directly on tab
+jumpHTML = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1700 300]);
 end

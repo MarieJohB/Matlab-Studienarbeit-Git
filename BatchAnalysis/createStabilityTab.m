@@ -9,9 +9,6 @@ function createStabilityTab(tab, batchResults)
 paramValues = batchResults.paramValues;
 stabilityValues = double(batchResults.stability);
 
-% Add title label
-uilabel(tab, 'Position', [50 950 400 30], 'Text', 'System Stability vs. Parameter Value', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Create axes for stability plot directly on tab (larger for fullscreen)
 stabAxes = uiaxes(tab, 'Position', [50 450 1800 500]);
@@ -40,10 +37,6 @@ if ~isempty(transitions)
     end
     hold(stabAxes, 'off');
 end
-
-% Add title label for stability analysis
-uilabel(tab, 'Position', [50 420 200 30], 'Text', 'Stability Analysis', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Create stability summary section
 stableCount = sum(stabilityValues);

@@ -17,5 +17,5 @@ elseif nargin == 1 && strcmp(startMode, 'batch')
 else
     % Invalid arguments
     error('Invalid argument. Use: App_automatische_Analyse_eines_Regelkreises(), App_automatische_Analyse_eines_Regelkreises(''gui''), or App_automatische_Analyse_eines_Regelkreises(''batch'')');
-end
+end 
 end

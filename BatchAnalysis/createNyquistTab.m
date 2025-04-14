@@ -5,50 +5,61 @@ function createNyquistTab(tab, batchResults)
 %   tab - Parent UI tab object
 %   batchResults - Structure containing batch analysis results
 
+% CRITICAL: Setze globale Eigenschaft für unsichtbare Figuren
+set(0, 'DefaultFigureVisible', 'off');
+
 % Extract parameter values
 paramValues = batchResults.paramValues;
-
-% Create title label directly on tab
-uilabel(tab, 'Position', [50 950 1800 30], 'Text', 'Nyquist Diagram', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Create axes for Nyquist plot directly on tab
 nyquistAxes = uiaxes(tab, 'Position', [50 410 1700 540]);
 
 % Create comparison axes directly on tab - much larger size for better visibility
-% CRITICAL: Define this before referencing it in callback
 comparisonAxes = uiaxes(tab, 'Position', [50 50 1800 340]);
 
 % Create parameter selection controls directly on tab
-uilabel(tab, 'Position', [650 370 150 22], 'Text', 'Parameter Value:', ...
+uilabel(tab, 'Position', [650 20 150 22], 'Text', 'Parameter Value:', ...
     'FontSize', 12, 'HorizontalAlignment', 'right');
 
 % Create dropdown for parameter selection
 paramDropdown = uidropdown(tab, ...
-    'Position', [820 365 300 30], ...
+    'Position', [820 20 300 30], ...
     'Items', arrayfun(@(x) sprintf('%.6f', x), paramValues, 'UniformOutput', false), ...
     'Value', sprintf('%.6f', paramValues(1)), ...
-    'ValueChangedFcn', @(dd, event) updateNyquistPlot(dd, nyquistAxes, comparisonAxes, batchResults));
+    'ValueChangedFcn', @(dd, ~) updateNyquistPlot(dd)); % Simplified callback
 
 % Create value display to show more info
-valueInfoLabel = uilabel(tab, 'Position', [1130 370 80 22], ...
+valueInfoLabel = uilabel(tab, 'Position', [1130 20 80 22], ...
     'Text', sprintf('(1/%d)', length(paramValues)), ...
     'FontSize', 11, 'HorizontalAlignment', 'left');
 
 % Initial plot
-updateNyquistPlot(paramDropdown, nyquistAxes, comparisonAxes, batchResults);
+updateNyquistPlot(paramDropdown);
+
+% Stelle DefaultFigureVisible zurück (optional, falls andere Teile der App davon betroffen sein könnten)
+% set(0, 'DefaultFigureVisible', 'on');
 
 % Function to update Nyquist plot based on selected parameter
-function updateNyquistPlot(dropdown, nyquistAxes, comparisonAxes, batchResults)
+function updateNyquistPlot(dropdown)
+    % CRITICAL: Stelle sicher, dass alle neuen Figuren unsichtbar sind
+    set(0, 'DefaultFigureVisible', 'off');
+    
+    % Falls Figure 1 bereits existiert, mache sie explizit unsichtbar
+    f1 = findobj(0, 'Type', 'figure', 'Number', 1);
+    if ~isempty(f1)
+        set(f1, 'Visible', 'off');
+    end
+    
     % Get the selected parameter value and find corresponding index
     selectedValue = str2double(dropdown.Value);
-    [~, idx] = min(abs(batchResults.paramValues - selectedValue));
+    [~, idx] = min(abs(paramValues - selectedValue));
     
     % Update the value info label
-    valueInfoLabel.Text = sprintf('(%d/%d)', idx, length(batchResults.paramValues));
+    valueInfoLabel.Text = sprintf('(%d/%d)', idx, length(paramValues));
     
-    % Clear plot
+    % Clear plots
     cla(nyquistAxes);
+    cla(comparisonAxes);
     
     % Get Nyquist data for selected parameter
     nyquistData = batchResults.nyquist{idx};
@@ -65,6 +76,9 @@ function updateNyquistPlot(dropdown, nyquistAxes, comparisonAxes, batchResults)
     lReal = nyquistData.real;
     lImag = nyquistData.imag;
     omega = nyquistData.omega;
+    
+    % CRITICAL: Explizit den richtigen Axes-Handle verwenden
+    axes(nyquistAxes);
     
     % Plot Nyquist curve
     hold(nyquistAxes, 'on');
@@ -127,16 +141,30 @@ function updateNyquistPlot(dropdown, nyquistAxes, comparisonAxes, batchResults)
     hold(nyquistAxes, 'off');
     
     % Update the distance plot
-    updateDistancePlot(comparisonAxes, batchResults, idx);
+    updateDistancePlot(idx);
+    
+    % CRITICAL: Alle zwischengespeicherten Figuren unsichtbar machen
+    drawnow; % Lasse alle Grafikoperationen abschließen
+    allFigs = findall(0, 'Type', 'figure');
+    mainFig = ancestor(tab, 'figure');
+    
+    for i = 1:length(allFigs)
+        if isvalid(allFigs(i)) && allFigs(i) ~= mainFig
+            set(allFigs(i), 'Visible', 'off');
+        end
+    end
 end
 
 % Function to update the distance plot (larger size with points)
-function updateDistancePlot(axs, batchResults, currentIdx)
+function updateDistancePlot(currentIdx)
     % Clear plot
-    cla(axs);
+    cla(comparisonAxes);
+    
+    % CRITICAL: Explizit den richtigen Axes-Handle verwenden
+    axes(comparisonAxes);
     
     % Calculate the minimum distance to critical point for each parameter value
-    numParams = length(batchResults.paramValues);
+    numParams = length(paramValues);
     minDistances = zeros(1, numParams);
     
     for i = 1:numParams
@@ -149,33 +177,33 @@ function updateDistancePlot(axs, batchResults, currentIdx)
         end
     end
     
-    % Plot the distances with improved styling and markers (like stability plot)
-    hold(axs, 'on');
+    % Plot the distances with improved styling
+    hold(comparisonAxes, 'on');
     
     % Plot with points like in stability tab - larger size for better visibility
-    plot(axs, batchResults.paramValues, minDistances, 'LineWidth', 3, ...
+    plot(comparisonAxes, paramValues, minDistances, 'LineWidth', 3, ...
         'Color', [0.3 0.6 0.9], 'Marker', '.', 'MarkerSize', 20);
     
     % Highlight current parameter
-    plot(axs, batchResults.paramValues(currentIdx), minDistances(currentIdx), 'ro', ...
+    plot(comparisonAxes, paramValues(currentIdx), minDistances(currentIdx), 'ro', ...
         'MarkerSize', 12, 'MarkerFaceColor', 'r');
     
     % Add critical line at distance = 1 (stability threshold)
-    yline(axs, 1, 'r--', 'LineWidth', 2);
-    text(axs, batchResults.paramValues(1), 1.05, 'Critical Distance = 1', 'Color', 'r', 'FontSize', 14);
+    yline(comparisonAxes, 1, 'r--', 'LineWidth', 2);
+    text(comparisonAxes, paramValues(1), 1.05, 'Critical Distance = 1', 'Color', 'r', 'FontSize', 14);
     
     % Set properties with larger fonts for better visibility in the larger plot
-    ylabel(axs, 'Minimum Distance to Critical Point', 'FontSize', 16);
-    xlabel(axs, 'Parameter Value', 'FontSize', 16);
-    grid(axs, 'on');
-    xlim(axs, [min(batchResults.paramValues) max(batchResults.paramValues)]);
-    title(axs, 'Distance to Critical Point (-1,0) vs. Parameter Value', 'FontSize', 18);
+    ylabel(comparisonAxes, 'Minimum Distance to Critical Point', 'FontSize', 16);
+    xlabel(comparisonAxes, 'Parameter Value', 'FontSize', 16);
+    grid(comparisonAxes, 'on');
+    xlim(comparisonAxes, [min(paramValues) max(paramValues)]);
+    title(comparisonAxes, 'Distance to Critical Point (-1,0) vs. Parameter Value', 'FontSize', 18);
     
     % Add more vertical grid lines for better readability in the larger plot
     ax = gca;
     ax.XMinorGrid = 'on';
     ax.YMinorGrid = 'on';
     
-    hold(axs, 'off');
+    hold(comparisonAxes, 'off');
 end
 end

@@ -42,10 +42,6 @@ for i = 1:numPoints
     end
 end
 
-% Add title label
-uilabel(tab, 'Position', [50 950 400 30], 'Text', 'Stability Margins', ...
-    'FontWeight', 'bold', 'FontSize', 16);
-
 % Create axes directly on tab for fullscreen
 gmAxes = uiaxes(tab, 'Position', [50 600 850 350]);
 pmAxes = uiaxes(tab, 'Position', [920 600 850 350]);
@@ -91,10 +87,6 @@ title(wcpAxes, 'Phase Crossover Frequency vs Parameter Value', 'FontSize', 14);
 xlabel(wcpAxes, 'Parameter Value', 'FontSize', 12);
 ylabel(wcpAxes, 'Frequency (rad/s)', 'FontSize', 12);
 grid(wcpAxes, 'on');
-
-% Add title label for analysis section
-uilabel(tab, 'Position', [50 370 400 30], 'Text', 'Stability Margin Analysis', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Define thresholds for good stability margins
 minGainMargin_dB = 6.0;  % dB
