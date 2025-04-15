@@ -5,6 +5,11 @@ function App_automatische_Analyse_eines_Regelkreises(startMode)
 %   2. App_automatische_Analyse_eines_Regelkreises('gui') - starts GUI directly
 %   3. App_automatische_Analyse_eines_Regelkreises('batch') - starts batch mode directly
 
+% CRITICAL: Reset the figure visibility to 'on' at application startup
+% This ensures that figures are visible by default, even if a previous session
+% ended without properly restoring this setting
+set(0, 'DefaultFigureVisible', 'on');
+
 if nargin == 0
     % No arguments - show selection dialog
     createStartupDialog();

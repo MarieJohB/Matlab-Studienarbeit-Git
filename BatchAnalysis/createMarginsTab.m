@@ -42,11 +42,11 @@ for i = 1:numPoints
     end
 end
 
-% Create axes directly on tab for fullscreen
-gmAxes = uiaxes(tab, 'Position', [50 600 850 350]);
-pmAxes = uiaxes(tab, 'Position', [920 600 850 350]);
-wcgAxes = uiaxes(tab, 'Position', [50 400 850 200]);
-wcpAxes = uiaxes(tab, 'Position', [920 400 850 200]);
+% Create axes directly on tab for fullscreen with identical sizes
+gmAxes = uiaxes(tab, 'Position', [75 710 850 240]);
+pmAxes = uiaxes(tab, 'Position', [945 710 850 240]);
+wcgAxes = uiaxes(tab, 'Position', [75 450 850 240]);
+wcpAxes = uiaxes(tab, 'Position', [945 450 850 240]);
 
 % Plot gain margin with improved styling
 plot(gmAxes, paramValues, gainMargin_dB, 'b-o', 'LineWidth', 2.5, 'MarkerSize', 8);
@@ -240,5 +240,5 @@ end
 htmlContent = [htmlContent, '</table></body></html>'];
 
 % Create HTML component directly on tab
-analysisHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1800 300]);
+analysisHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1800 350]);
 end

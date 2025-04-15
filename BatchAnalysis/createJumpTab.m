@@ -31,8 +31,8 @@ uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Steady State Response', ...
     'FontWeight', 'bold', 'FontSize', 16);
 
 % Create axes directly on tab
-outputAxes = uiaxes(tab, 'Position', [80 710 1640 240]);
-errorAxes = uiaxes(tab, 'Position', [80 450 1640 240]);
+outputAxes = uiaxes(tab, 'Position', [50 680 1800 270]);
+errorAxes = uiaxes(tab, 'Position', [50 420 1800 270]);
 
 % Plot steady state output with improved styling
 plot(outputAxes, paramValues, steadyStateOutput, 'b-o', 'LineWidth', 2.5, 'MarkerSize', 8);
@@ -59,10 +59,6 @@ hold(errorAxes, 'on');
 yline(errorAxes, 0, 'g--', 'LineWidth', 2);
 text(errorAxes, paramValues(1), 0.05, 'Zero Error', 'Color', 'g', 'FontSize', 12);
 hold(errorAxes, 'off');
-
-% Add title label for jumpability analysis
-uilabel(tab, 'Position', [50 400 400 20], 'Text', 'Jumpability Analysis', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Define threshold for "jumpable" - steady state error near zero
 errorThreshold = 0.01;
@@ -204,5 +200,5 @@ end
 htmlContent = [htmlContent, '</table></body></html>'];
 
 % Create HTML component directly on tab
-jumpHTML = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1700 300]);
+jumpHTML = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1800 350]);
 end

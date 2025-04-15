@@ -37,10 +37,10 @@ uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Time Response Parameters', ..
     'FontWeight', 'bold', 'FontSize', 16);
 
 % Create 2x2 layout of axes directly on tab
-riseAxes = uiaxes(tab, 'Position', [50 710 850 240]);
-settlingAxes = uiaxes(tab, 'Position', [920 710 850 240]);
-overshootAxes = uiaxes(tab, 'Position', [50 450 850 240]);
-peakAxes = uiaxes(tab, 'Position', [920 450 850 240]);
+riseAxes = uiaxes(tab, 'Position', [75 710 850 240]);
+settlingAxes = uiaxes(tab, 'Position', [945 710 850 240]);
+overshootAxes = uiaxes(tab, 'Position', [75 450 850 240]);
+peakAxes = uiaxes(tab, 'Position', [945 450 850 240]);
 
 % Plot rise time with improved styling
 plot(riseAxes, paramValues, riseTime, 'b-o', 'LineWidth', 2.5, 'MarkerSize', 8);
@@ -69,10 +69,6 @@ title(peakAxes, 'Peak Time vs Parameter Value', 'FontSize', 14);
 xlabel(peakAxes, 'Parameter Value', 'FontSize', 12);
 ylabel(peakAxes, 'Peak Time (s)', 'FontSize', 12);
 grid(peakAxes, 'on');
-
-% Add title label for performance metrics
-uilabel(tab, 'Position', [50 400 400 20], 'Text', 'Performance Metrics Analysis', ...
-    'FontWeight', 'bold', 'FontSize', 16);
 
 % Define thresholds for good performance
 maxRiseTime = 1.5;     % seconds
@@ -212,5 +208,5 @@ end
 htmlContent = [htmlContent, '</table></body></html>'];
 
 % Create HTML component directly on tab
-thresholdHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1700 300]);
+thresholdHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 50 1800 350]);
 end

@@ -56,7 +56,7 @@ htmlContent = [htmlContent, ...
     '</table></body></html>'];
 
 % Create HTML component for batch info - directly on tab
-batchInfoHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 750 1800 220]);
+batchInfoHtml = uihtml(tab, 'HTMLSource', htmlContent, 'Position', [50 735 1800 220]);
 
 % Add title label for batch info
 uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Batch Analysis Information', ...
@@ -66,10 +66,6 @@ uilabel(tab, 'Position', [50 970 400 20], 'Text', 'Batch Analysis Information', 
 if isfield(batchResults, 'stability') || isfield(batchResults, 'margins')
     findingsHtml = createKeyFindingsHTML(batchResults);
     uihtml(tab, 'HTMLSource', findingsHtml, 'Position', [50 450 1800 290]);
-    
-    % Add title label for key findings
-    uilabel(tab, 'Position', [50 740 200 20], 'Text', 'Key Findings', ...
-        'FontWeight', 'bold', 'FontSize', 16);
 end
 
 % Plot parameter vs stability if available (larger size for fullscreen)

@@ -76,13 +76,16 @@ paramDropdown = uidropdown(sweepPanel, 'Position', [135 10 140 20], ...
 
 % Min, max, step inputs with better layout
 uilabel(sweepPanel, 'Position', [295 10 60 20], 'Text', 'Min Value:');
-minEdit = uieditfield(sweepPanel, 'numeric', 'Position', [355 10 60 20], 'Value', 0.1);
+minEdit = uieditfield(sweepPanel, 'text', 'Position', [355 10 60 20], 'Value', '0.1', ...
+    'ValueChangedFcn', @(field, event) handleDecimalInput(field));
 
 uilabel(sweepPanel, 'Position', [430 10 60 20], 'Text', 'Max Value:');
-maxEdit = uieditfield(sweepPanel, 'numeric', 'Position', [495 10 60 20], 'Value', 10);
+maxEdit = uieditfield(sweepPanel, 'text', 'Position', [495 10 60 20], 'Value', '10', ...
+    'ValueChangedFcn', @(field, event) handleDecimalInput(field));
 
 uilabel(sweepPanel, 'Position', [570 10 60 20], 'Text', 'Step Size:');
-stepEdit = uieditfield(sweepPanel, 'numeric', 'Position', [630 10 60 20], 'Value', 0.5);
+stepEdit = uieditfield(sweepPanel, 'text', 'Position', [630 10 60 20], 'Value', '0.5', ...
+    'ValueChangedFcn', @(field, event) handleDecimalInput(field));
 
 % Analysis selection - centered and equally distributed checkboxes
 checkboxWidth = 170;
@@ -163,6 +166,12 @@ updateTransferFunctionDisplay();
         for i = 1:length(parts)
             array(i) = str2double(parts{i});
         end
+    end
+    
+    % Helper function to handle decimal input with comma or point
+    function handleDecimalInput(field)
+        % Replace comma with point
+        field.Value = strrep(field.Value, ',', '.');
     end
 
     % Update the HTML display of transfer functions and parameter dropdown
@@ -305,7 +314,7 @@ updateTransferFunctionDisplay();
         end
     end
 
-    % Load batch results function
+    % Load batch results function - MODIFIED to always open in new window
     function loadBatchResults()
         % Prompt for file
         [file, path] = uigetfile('*.mat', 'Load Batch Analysis Results');
@@ -321,7 +330,7 @@ updateTransferFunctionDisplay();
         try
             data = load(fullPath);
             if isfield(data, 'batchResults')
-                % Visualize results
+                % Visualize results in a new window (always)
                 batchVisualization(data.batchResults, fullPath);
             else
                 % FIXED: Corrected uialert syntax - removed 'error' parameter
@@ -350,10 +359,16 @@ updateTransferFunctionDisplay();
             paramStr = paramDropdown.Value;
             [tfType, coeffType, index] = parseParamString(paramStr);
             
-            % Get sweep range
-            minVal = minEdit.Value;
-            maxVal = maxEdit.Value;
-            stepSize = stepEdit.Value;
+            % Get sweep range - convert text to number (comma already converted to point)
+            minVal = str2double(minEdit.Value);
+            maxVal = str2double(maxEdit.Value);
+            stepSize = str2double(stepEdit.Value);
+            
+            % Validate numeric values
+            if isnan(minVal) || isnan(maxVal) || isnan(stepSize)
+                uialert(batchFig, 'Please enter valid numeric values for Min, Max and Step Size.', 'Invalid Input');
+                return;
+            end
             
             % Create parameter info struct
             paramInfo = struct('type', tfType, 'coeffType', coeffType, 'index', index, ...

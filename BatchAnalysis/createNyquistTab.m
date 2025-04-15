@@ -5,48 +5,55 @@ function createNyquistTab(tab, batchResults)
 %   tab - Parent UI tab object
 %   batchResults - Structure containing batch analysis results
 
-% CRITICAL: Setze globale Eigenschaft für unsichtbare Figuren
+% Store original visibility setting to restore it later
+original_visibility = get(0, 'DefaultFigureVisible');
+
+% Set figures to be invisible during this function
 set(0, 'DefaultFigureVisible', 'off');
 
 % Extract parameter values
 paramValues = batchResults.paramValues;
 
 % Create axes for Nyquist plot directly on tab
-nyquistAxes = uiaxes(tab, 'Position', [50 410 1700 540]);
+nyquistAxes = uiaxes(tab, 'Position', [50 410 1800 540]);
 
-% Create comparison axes directly on tab - much larger size for better visibility
-comparisonAxes = uiaxes(tab, 'Position', [50 50 1800 340]);
+% Create comparison axes directly on tab
+comparisonAxes = uiaxes(tab, 'Position', [50 50 1770 340]);
 
 % Create parameter selection controls directly on tab
-uilabel(tab, 'Position', [650 20 150 22], 'Text', 'Parameter Value:', ...
+uilabel(tab, 'Position', [630 10 150 22], 'Text', 'Parameter Value:', ...
     'FontSize', 12, 'HorizontalAlignment', 'right');
 
 % Create dropdown for parameter selection
 paramDropdown = uidropdown(tab, ...
-    'Position', [820 20 300 30], ...
+    'Position', [800 10 300 30], ...
     'Items', arrayfun(@(x) sprintf('%.6f', x), paramValues, 'UniformOutput', false), ...
     'Value', sprintf('%.6f', paramValues(1)), ...
     'ValueChangedFcn', @(dd, ~) updateNyquistPlot(dd)); % Simplified callback
 
 % Create value display to show more info
-valueInfoLabel = uilabel(tab, 'Position', [1130 20 80 22], ...
+valueInfoLabel = uilabel(tab, 'Position', [1110 10 80 22], ...
     'Text', sprintf('(1/%d)', length(paramValues)), ...
     'FontSize', 11, 'HorizontalAlignment', 'left');
 
 % Initial plot
 updateNyquistPlot(paramDropdown);
 
-% Stelle DefaultFigureVisible zurück (optional, falls andere Teile der App davon betroffen sein könnten)
-% set(0, 'DefaultFigureVisible', 'on');
+% IMPORTANT: Restore the original figure visibility setting when function completes
+set(0, 'DefaultFigureVisible', original_visibility);
 
 % Function to update Nyquist plot based on selected parameter
 function updateNyquistPlot(dropdown)
-    % CRITICAL: Stelle sicher, dass alle neuen Figuren unsichtbar sind
+    % Store current visibility setting to restore it later
+    current_visibility = get(0, 'DefaultFigureVisible');
+    
+    % Set figures to be invisible during this function
     set(0, 'DefaultFigureVisible', 'off');
     
-    % Falls Figure 1 bereits existiert, mache sie explizit unsichtbar
+    % Find and hide Figure 1 if it exists
     f1 = findobj(0, 'Type', 'figure', 'Number', 1);
     if ~isempty(f1)
+        original_f1_visibility = get(f1, 'Visible');
         set(f1, 'Visible', 'off');
     end
     
@@ -77,7 +84,7 @@ function updateNyquistPlot(dropdown)
     lImag = nyquistData.imag;
     omega = nyquistData.omega;
     
-    % CRITICAL: Explizit den richtigen Axes-Handle verwenden
+    % CRITICAL: Explicitly use the correct axes handle
     axes(nyquistAxes);
     
     % Plot Nyquist curve
@@ -143,8 +150,8 @@ function updateNyquistPlot(dropdown)
     % Update the distance plot
     updateDistancePlot(idx);
     
-    % CRITICAL: Alle zwischengespeicherten Figuren unsichtbar machen
-    drawnow; % Lasse alle Grafikoperationen abschließen
+    % Make all cached figures invisible
+    drawnow; % Complete all graphics operations
     allFigs = findall(0, 'Type', 'figure');
     mainFig = ancestor(tab, 'figure');
     
@@ -153,14 +160,28 @@ function updateNyquistPlot(dropdown)
             set(allFigs(i), 'Visible', 'off');
         end
     end
+    
+    % Restore Figure 1 to its original visibility if it exists
+    if ~isempty(f1) && isvalid(f1)
+        set(f1, 'Visible', original_f1_visibility);
+    end
+    
+    % CRITICAL: Restore the original figure visibility setting
+    set(0, 'DefaultFigureVisible', current_visibility);
 end
 
 % Function to update the distance plot (larger size with points)
 function updateDistancePlot(currentIdx)
+    % Store current visibility setting
+    current_visibility = get(0, 'DefaultFigureVisible');
+    
+    % Set figures to be invisible during this function
+    set(0, 'DefaultFigureVisible', 'off');
+    
     % Clear plot
     cla(comparisonAxes);
     
-    % CRITICAL: Explizit den richtigen Axes-Handle verwenden
+    % CRITICAL: Explicitly use the correct axes handle
     axes(comparisonAxes);
     
     % Calculate the minimum distance to critical point for each parameter value
@@ -205,5 +226,8 @@ function updateDistancePlot(currentIdx)
     ax.YMinorGrid = 'on';
     
     hold(comparisonAxes, 'off');
+    
+    % CRITICAL: Restore the original figure visibility setting
+    set(0, 'DefaultFigureVisible', current_visibility);
 end
 end
