@@ -88,8 +88,7 @@ function [K, details] = designCompensationController(G, structure, options, plan
                         num_K = conv(num_K, quad_term_num);
                         den_K = conv(den_K, new_quad_term);
                         
-                        details = [details, sprintf('   - Complex pole at %.3f+%.3fi replaced with %.3f+%.3fi\n', 
-                                   real_part, imag_part, new_real_part, imag_part)];
+                        details = [details, sprintf('   - Complex pole at %.3f+%.3fi replaced with %.3f+%.3fi\n', real_part, imag_part, new_real_part, imag_part)];
                     end
                 else
                     % For real poles
@@ -100,8 +99,7 @@ function [K, details] = designCompensationController(G, structure, options, plan
                     stable_pole = -abs(pole_i) * 2;
                     den_K = conv(den_K, [1, -stable_pole]);
                     
-                    details = [details, sprintf('   - Real pole at %.3f replaced with %.3f\n', 
-                               pole_i, stable_pole)];
+                    details = [details, sprintf('   - Real pole at %.3f replaced with %.3f\n', pole_i, stable_pole)];
                 end
             end
         end
@@ -139,8 +137,7 @@ function [K, details] = designCompensationController(G, structure, options, plan
                         num_K = conv(num_K, quad_term_num);
                         den_K = conv(den_K, new_quad_term);
                         
-                        details = [details, sprintf('   - Increased damping for pole at %.3f+%.3fi from %.2f to %.2f\n', 
-                                   real_part, imag_part, current_damping, new_damping)];
+                        details = [details, sprintf('   - Increased damping for pole at %.3f+%.3fi from %.2f to %.2f\n', real_part, imag_part, current_damping, new_damping)];
                     end
                 end
             end
