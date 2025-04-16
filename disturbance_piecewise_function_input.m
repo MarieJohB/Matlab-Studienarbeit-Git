@@ -18,6 +18,7 @@ appColors = struct(...
     'text', [0.2 0.2 0.2], ...             % Dark text
     'lightText', [1 1 1]);                 % White text for dark backgrounds
 
+
 % First, get the number of sections with improved UI
 num_sections = getSectionCount();
 
