@@ -85,7 +85,7 @@ if isfield(batchResults, 'keyParams') && ~isempty(batchResults.keyParams{1})
 end
 
 if isfield(batchResults, 'jump') && ~isempty(batchResults.jump{1})
-    jumpTab = uitab(resultsTabs, 'Title', 'Jump Analysis');
+    jumpTab = uitab(resultsTabs, 'Title', 'Step Response');
     createJumpTab(jumpTab, batchResults);
 end
 
@@ -157,7 +157,7 @@ function loadResults()
                     end
                     
                     if isfield(data.batchResults, 'jump') && ~isempty(data.batchResults.jump{1})
-                        jumpTab = uitab(resultsTabs, 'Title', 'Jump Analysis');
+                        jumpTab = uitab(resultsTabs, 'Title', 'Step Response');
                         createJumpTab(jumpTab, data.batchResults);
                     end
                     
