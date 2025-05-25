@@ -63,7 +63,7 @@ uibutton(batchSection, 'Text', 'Start Batch Mode', 'Position', [130 10 140 30], 
     'ButtonPushedFcn', @(btn,event) startBatchMode(selectionFig));
 
 % Version info at the bottom
-uilabel(selectionFig, 'Position', [0 10 500 20], 'Text', 'v1.1 - Control Engineering Lab', ...
+uilabel(selectionFig, 'Position', [0 10 500 20], 'Text', 'v1.0 - ATLAS', ...
     'FontSize', 9, 'HorizontalAlignment', 'center', 'FontColor', [0.5 0.5 0.5]);
 end
 
